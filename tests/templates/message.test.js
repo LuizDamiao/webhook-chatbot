@@ -14,4 +14,12 @@ describe('formatCartMessage', () => {
   it('should throw error if product is missing', () => {
     expect(() => formatCartMessage('João', null)).toThrow('Product is required');
   });
+
+  it('should throw error if name is empty string', () => {
+    expect(() => formatCartMessage('', 'Product')).toThrow('Name is required');
+  });
+
+  it('should throw error if product is empty string', () => {
+    expect(() => formatCartMessage('João', '')).toThrow('Product is required');
+  });
 });

@@ -5,8 +5,8 @@
  * @returns {string} Formatted message
  */
 export function formatCartMessage(name, product) {
-  if (!name) throw new Error('Name is required');
-  if (!product) throw new Error('Product is required');
+  if (!name || !name.trim()) throw new Error('Name is required');
+  if (!product || !product.trim()) throw new Error('Product is required');
 
   return `Olá ${name}! 👋
 
