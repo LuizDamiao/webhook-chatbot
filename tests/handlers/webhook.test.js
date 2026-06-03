@@ -46,11 +46,35 @@ describe('handleWebhook', () => {
     req.body.telefone = null;
     await handleWebhook(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Missing required fields: nome, telefone, produto' });
   });
 
   it('should return 400 if produto is missing', async () => {
     req.body.produto = null;
     await handleWebhook(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Missing required fields: nome, telefone, produto' });
+  });
+
+  it('should return 500 if sendMessage throws', async () => {
+    const { WhatsAppService } = await import('../../src/services/whatsapp.js');
+    WhatsAppService.mockImplementation(() => ({
+      sendMessage: jest.fn().mockRejectedValue(new Error('Connection failed'))
+    }));
+
+    await handleWebhook(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to send message' });
+  });
+
+  it('should return 500 if sendMessage returns success false', async () => {
+    const { WhatsAppService } = await import('../../src/services/whatsapp.js');
+    WhatsAppService.mockImplementation(() => ({
+      sendMessage: jest.fn().mockResolvedValue({ success: false, error: 'Not connected' })
+    }));
+
+    await handleWebhook(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to send message' });
   });
 });
