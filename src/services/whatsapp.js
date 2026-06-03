@@ -72,6 +72,25 @@ export class WhatsAppService {
           this.qrCode = null;
         }
       });
+
+      this.sock.ev.on('messages.update', (updates) => {
+        for (const update of updates) {
+          const status = update.update?.status;
+          if (status) {
+            const statusMap = {
+              0: 'ERROR',
+              1: 'PENDING',
+              2: 'SERVER_ACK',
+              3: 'DELIVERY_ACK',
+              4: 'READ',
+              5: 'PLAYED',
+              16: 'SENT'
+            };
+            const statusText = statusMap[status] || `STATUS_${status}`;
+            logger.info(`Message ${update.key?.id} status: ${statusText} (${status})`);
+          }
+        }
+      });
     } catch (error) {
       logger.error('Failed to initialize WhatsApp:', error);
       throw error;
@@ -101,9 +120,20 @@ export class WhatsAppService {
     const jid = `${formattedPhone}@s.whatsapp.net`;
 
     try {
-      await this.sock.sendMessage(jid, { text: message });
-      logger.info(`Message sent to ${formattedPhone}`);
-      return { success: true };
+      const [exists] = await this.sock.onWhatsApp(jid);
+      if (!exists?.exists) {
+        logger.warn(`Phone ${formattedPhone} does not exist on WhatsApp`);
+        return { success: false, error: 'Phone number not found on WhatsApp' };
+      }
+      logger.info(`Phone ${formattedPhone} verified on WhatsApp`);
+    } catch (checkErr) {
+      logger.warn('onWhatsApp check failed, proceeding anyway:', checkErr.message);
+    }
+
+    try {
+      const result = await this.sock.sendMessage(jid, { text: message });
+      logger.info(`Message sent to ${formattedPhone}`, { messageId: result?.key?.id });
+      return { success: true, messageId: result?.key?.id };
     } catch (error) {
       logger.error('Failed to send message:', error);
       return { success: false, error: error.message };
