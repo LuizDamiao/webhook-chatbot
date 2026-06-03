@@ -1,7 +1,7 @@
 // Configuration - Backend URL
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:3000'
-  : 'https://webhook-chatbot-pmyi.onrender.com';
+  : 'https://webhook-chatbot-v2.onrender.com';
 const REFRESH_INTERVAL = 30000;
 
 const elements = {
