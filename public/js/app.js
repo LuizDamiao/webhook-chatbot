@@ -12,7 +12,10 @@ const elements = {
     lastMessageTime: document.getElementById('lastMessageTime'),
     webhookForm: document.getElementById('webhookForm'),
     webhookResponse: document.getElementById('webhookResponse'),
-    messageLog: document.getElementById('messageLog')
+    messageLog: document.getElementById('messageLog'),
+    qrCodeContainer: document.getElementById('qrCodeContainer'),
+    qrCodeImage: document.getElementById('qrCodeImage'),
+    qrCodeSection: document.getElementById('qrCodeSection')
 };
 
 function getLogs() {
@@ -85,6 +88,7 @@ async function checkServerStatus() {
 
         if (response.ok) {
             setServerStatus(true);
+            await checkWhatsAppStatus();
             return true;
         }
         setServerStatus(false);
@@ -92,6 +96,61 @@ async function checkServerStatus() {
     } catch {
         setServerStatus(false);
         return false;
+    }
+}
+
+async function checkWhatsAppStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/status`, {
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            updateWhatsAppStatus(data.whatsapp);
+        }
+    } catch {
+        // Ignore error
+    }
+}
+
+function updateWhatsAppStatus(whatsapp) {
+    if (whatsapp.connected) {
+        elements.whatsappStatusText.textContent = 'Conectado';
+        elements.whatsappStatusText.style.color = 'var(--success)';
+        if (elements.qrCodeSection) {
+            elements.qrCodeSection.style.display = 'none';
+        }
+    } else if (whatsapp.hasQRCode) {
+        elements.whatsappStatusText.textContent = 'Aguardando scan';
+        elements.whatsappStatusText.style.color = 'var(--warning)';
+        fetchQRCode();
+    } else {
+        elements.whatsappStatusText.textContent = 'Desconectado';
+        elements.whatsappStatusText.style.color = 'var(--error)';
+        if (elements.qrCodeSection) {
+            elements.qrCodeSection.style.display = 'none';
+        }
+    }
+}
+
+async function fetchQRCode() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/qrcode`, {
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.qr && elements.qrCodeImage && elements.qrCodeSection) {
+                // Generate QR code image from data
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qr)}`;
+                elements.qrCodeImage.src = qrUrl;
+                elements.qrCodeSection.style.display = 'block';
+            }
+        }
+    } catch {
+        // Ignore error
     }
 }
 
