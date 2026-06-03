@@ -13,7 +13,19 @@ describe('formatPhone', () => {
     expect(formatPhone('(11) 99999-9999')).toBe('5511999999999');
   });
 
-  it('should throw error if phone is invalid', () => {
+  it('should throw error if phone is empty', () => {
     expect(() => formatPhone('')).toThrow('Invalid phone number');
+  });
+
+  it('should throw error if phone is null', () => {
+    expect(() => formatPhone(null)).toThrow('Invalid phone number');
+  });
+
+  it('should throw error if phone is too short', () => {
+    expect(() => formatPhone('123')).toThrow('Invalid phone number');
+  });
+
+  it('should throw error if phone is too long', () => {
+    expect(() => formatPhone('5511999999999999')).toThrow('Invalid phone number');
   });
 });

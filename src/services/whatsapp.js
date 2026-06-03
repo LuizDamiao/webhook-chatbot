@@ -10,10 +10,12 @@ const logger = pino({ level: 'info' });
 export function formatPhone(phone) {
   if (!phone) throw new Error('Invalid phone number');
 
-  // Remove non-numeric characters
   const cleaned = phone.replace(/\D/g, '');
 
-  // Add country code 55 if not present
+  if (cleaned.length < 10 || cleaned.length > 13) {
+    throw new Error('Invalid phone number');
+  }
+
   if (cleaned.startsWith('55')) {
     return cleaned;
   }
@@ -34,34 +36,38 @@ export class WhatsAppService {
    * Initialize WhatsApp connection
    */
   async connect() {
-    const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = await import('@whiskeysockets/baileys');
+    try {
+      const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = await import('@whiskeysockets/baileys');
+      const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
 
-    const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
+      this.sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true,
+        logger: logger
+      });
 
-    this.sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: true,
-      logger: logger
-    });
+      this.sock.ev.on('creds.update', saveCreds);
 
-    this.sock.ev.on('creds.update', saveCreds);
+      this.sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
 
-    this.sock.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect } = update;
+        if (connection === 'close') {
+          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+          logger.info('Connection closed:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
+          this.isConnected = false;
 
-      if (connection === 'close') {
-        const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-        logger.info('Connection closed:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
-        this.isConnected = false;
-
-        if (shouldReconnect) {
-          this.connect();
+          if (shouldReconnect) {
+            this.connect();
+          }
+        } else if (connection === 'open') {
+          logger.info('WhatsApp connected');
+          this.isConnected = true;
         }
-      } else if (connection === 'open') {
-        logger.info('WhatsApp connected');
-        this.isConnected = true;
-      }
-    });
+      });
+    } catch (error) {
+      logger.error('Failed to initialize WhatsApp:', error);
+      throw error;
+    }
   }
 
   /**
@@ -81,10 +87,10 @@ export class WhatsAppService {
     try {
       await this.sock.sendMessage(jid, { text: message });
       logger.info(`Message sent to ${formattedPhone}`);
-      return true;
+      return { success: true };
     } catch (error) {
       logger.error('Failed to send message:', error);
-      throw error;
+      return { success: false, error: error.message };
     }
   }
 }
