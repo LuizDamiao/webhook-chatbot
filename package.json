@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "test": "cross-env NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:watch": "jest --watch"
   },
   "keywords": [],
@@ -23,6 +23,7 @@
     "pino": "^10.3.1"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14"
   }
