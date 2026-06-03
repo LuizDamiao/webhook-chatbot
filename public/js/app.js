@@ -1,7 +1,7 @@
-// Configuration - Update this URL to your Render.com backend URL
+// Configuration - Backend URL
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:3000'
-  : 'https://your-app-name.onrender.com'; // Update this!
+  : 'https://webhook-chatbot-pmyi.onrender.com';
 const REFRESH_INTERVAL = 30000;
 
 const elements = {
