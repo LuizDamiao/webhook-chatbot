@@ -30,6 +30,7 @@ export class WhatsAppService {
     this.sessionDir = sessionDir || './auth_info';
     this.sock = null;
     this.isConnected = false;
+    this.qrCode = null;
   }
 
   /**
@@ -49,12 +50,18 @@ export class WhatsAppService {
       this.sock.ev.on('creds.update', saveCreds);
 
       this.sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          this.qrCode = qr;
+          logger.info('QR Code received');
+        }
 
         if (connection === 'close') {
           const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
           logger.info('Connection closed:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
           this.isConnected = false;
+          this.qrCode = null;
 
           if (shouldReconnect) {
             this.connect();
@@ -62,12 +69,21 @@ export class WhatsAppService {
         } else if (connection === 'open') {
           logger.info('WhatsApp connected');
           this.isConnected = true;
+          this.qrCode = null;
         }
       });
     } catch (error) {
       logger.error('Failed to initialize WhatsApp:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get QR code for WhatsApp connection
+   * @returns {string|null} QR code data
+   */
+  getQRCode() {
+    return this.qrCode;
   }
 
   /**
