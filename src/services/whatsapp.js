@@ -145,28 +145,32 @@ export class WhatsAppService {
     }
 
     const formattedPhone = formatPhone(phone);
-    const jid = `${formattedPhone}@s.whatsapp.net`;
+    const inputJid = `${formattedPhone}@s.whatsapp.net`;
+    let jid = inputJid;
 
     try {
-      const [exists] = await this.sock.onWhatsApp(jid);
+      const [exists] = await this.sock.onWhatsApp(inputJid);
       if (!exists?.exists) {
         logger.warn(`Phone ${formattedPhone} does not exist on WhatsApp`);
         return { success: false, error: 'Phone number not found on WhatsApp' };
       }
-      logger.info(`Phone ${formattedPhone} verified on WhatsApp`);
+      if (exists.jid && exists.jid !== inputJid) {
+        logger.info(`Canonical JID differs: input=${inputJid} canonical=${exists.jid}`);
+        jid = exists.jid;
+      }
+      logger.info(`Phone ${formattedPhone} verified on WhatsApp, using JID: ${jid}`);
     } catch (checkErr) {
       logger.warn('onWhatsApp check failed, proceeding anyway:', checkErr.message);
     }
 
     try {
       const result = await this.sock.sendMessage(jid, { text: message });
-      logger.info(`Message sent to ${formattedPhone}`, {
+      logger.info(`Message sent to ${jid}`, {
         messageId: result?.key?.id,
         remoteJid: result?.key?.remoteJid,
         fromMe: result?.key?.fromMe,
         status: result?.status,
-        messageTimestamp: result?.messageTimestamp,
-        update: result?.update
+        messageTimestamp: result?.messageTimestamp
       });
       return { success: true, messageId: result?.key?.id, remoteJid: result?.key?.remoteJid };
     } catch (error) {
