@@ -8,9 +8,12 @@ export function formatCartMessage(name, product) {
   if (!name || !name.trim()) throw new Error('Name is required');
   if (!product || !product.trim()) throw new Error('Product is required');
 
-  return `Olá ${name}! 👋
+  const safeName = name.normalize('NFC');
+  const safeProduct = product.normalize('NFC');
 
-Notamos que você deixou o produto ${product} no carrinho.
+  return `Olá ${safeName}! 👋
+
+Notamos que você deixou o produto ${safeProduct} no carrinho.
 
 Precisa de ajuda? Estamos aqui para você!
 

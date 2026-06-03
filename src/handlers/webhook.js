@@ -28,7 +28,10 @@ export async function handleWebhook(req, res) {
   }
 
   try {
-    const message = formatCartMessage(nome, produto);
+    const message = formatCartMessage(
+      nome.normalize('NFC'),
+      produto.normalize('NFC')
+    );
     const result = await whatsappService.sendMessage(telefone, message);
 
     trackMessage(nome, telefone, result.success);
