@@ -50,10 +50,21 @@ app.get('/api/status', (req, res) => {
     },
     whatsapp: {
       connected: whatsappService.isConnected,
+      hasQRCode: !!whatsappService.getQRCode(),
       sessionDir: process.env.SESSION_DIR || './auth_info'
     },
     messages: getStats()
   });
+});
+
+// API: Get QR code for WhatsApp connection
+app.get('/api/qrcode', (req, res) => {
+  const qr = whatsappService.getQRCode();
+  if (qr) {
+    res.json({ qr });
+  } else {
+    res.json({ qr: null, message: 'No QR code available. WhatsApp might be connected or not started yet.' });
+  }
 });
 
 // API: Webhook endpoint (returns JSON for dashboard)
