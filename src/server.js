@@ -11,6 +11,7 @@ import { dirname, join } from 'path';
 import { authMiddleware } from './middleware/auth.js';
 import { handleWebhook, whatsappService } from './handlers/webhook.js';
 import { getStats, getLogs, trackMessage } from './utils/tracker.js';
+import { formatPhone } from './services/whatsapp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -103,6 +104,33 @@ app.post('/api/webhook', async (req, res) => {
 // API: Recent webhook logs
 app.get('/api/logs', (req, res) => {
   res.json({ logs: getLogs() });
+});
+
+// API: Diagnostic send with full result
+app.post('/api/diagnostic', async (req, res) => {
+  const { telefone } = req.body;
+  if (!telefone) {
+    return res.status(400).json({ error: 'telefone required' });
+  }
+  if (!whatsappService.isConnected) {
+    return res.status(503).json({ error: 'WhatsApp not connected' });
+  }
+  try {
+    const result = await whatsappService.sendMessage(telefone, 'Teste diagnostico');
+    const sock = whatsappService.sock;
+    const phoneInfo = await sock.onWhatsApp(`${formatPhone(telefone)}@s.whatsapp.net`);
+    res.json({
+      sendResult: result,
+      phoneExists: phoneInfo,
+      connectionState: {
+        isConnected: whatsappService.isConnected,
+        user: sock.user?.id,
+        platform: sock.user?.platform
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
 });
 
 // Webhook endpoint with authentication (original)
