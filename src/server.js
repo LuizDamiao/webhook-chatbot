@@ -52,6 +52,7 @@ app.get('/api/status', (req, res) => {
     whatsapp: {
       connected: whatsappService.isConnected,
       hasQRCode: !!whatsappService.getQRCode(),
+      pairingCode: whatsappService.getPairingCode(),
       sessionDir: process.env.SESSION_DIR || './auth_info'
     },
     messages: getStats()
@@ -65,6 +66,23 @@ app.get('/api/qrcode', (req, res) => {
     res.json({ qr });
   } else {
     res.json({ qr: null, message: 'No QR code available. WhatsApp might be connected or not started yet.' });
+  }
+});
+
+// API: Request pairing code (alternative to QR)
+app.post('/api/pairing', async (req, res) => {
+  const { telefone } = req.body;
+  if (!telefone) {
+    return res.status(400).json({ error: 'telefone required' });
+  }
+  if (!whatsappService.isConnected) {
+    return res.status(503).json({ error: 'WhatsApp not connected' });
+  }
+  try {
+    const code = await whatsappService.requestPairingCode(telefone);
+    res.json({ code, phone: formatPhone(telefone) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

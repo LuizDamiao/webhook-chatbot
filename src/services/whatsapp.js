@@ -31,6 +31,7 @@ export class WhatsAppService {
     this.sock = null;
     this.isConnected = false;
     this.qrCode = null;
+    this.pairingCode = null;
   }
 
   /**
@@ -62,6 +63,7 @@ export class WhatsAppService {
           logger.info('Connection closed:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
           this.isConnected = false;
           this.qrCode = null;
+          this.pairingCode = null;
 
           if (shouldReconnect) {
             this.connect();
@@ -70,6 +72,7 @@ export class WhatsAppService {
           logger.info('WhatsApp connected');
           this.isConnected = true;
           this.qrCode = null;
+          this.pairingCode = null;
         }
       });
 
@@ -106,6 +109,31 @@ export class WhatsAppService {
   }
 
   /**
+   * Request phone pairing code (alternative to QR)
+   * @param {string} phoneNumber - Phone number to pair with
+   * @returns {string} Pairing code
+   */
+  async requestPairingCode(phoneNumber) {
+    if (!this.sock || !this.isConnected) {
+      throw new Error('WhatsApp not connected');
+    }
+    const formattedPhone = formatPhone(phoneNumber);
+    try {
+      const code = await this.sock.requestPairingCode(formattedPhone);
+      this.pairingCode = code;
+      logger.info('Pairing code requested:', code);
+      return code;
+    } catch (error) {
+      logger.error('Failed to request pairing code:', error);
+      throw error;
+    }
+  }
+
+  getPairingCode() {
+    return this.pairingCode;
+  }
+
+  /**
    * Send text message
    * @param {string} phone - Phone number (will be formatted)
    * @param {string} message - Message text
@@ -132,8 +160,15 @@ export class WhatsAppService {
 
     try {
       const result = await this.sock.sendMessage(jid, { text: message });
-      logger.info(`Message sent to ${formattedPhone}`, { messageId: result?.key?.id });
-      return { success: true, messageId: result?.key?.id };
+      logger.info(`Message sent to ${formattedPhone}`, {
+        messageId: result?.key?.id,
+        remoteJid: result?.key?.remoteJid,
+        fromMe: result?.key?.fromMe,
+        status: result?.status,
+        messageTimestamp: result?.messageTimestamp,
+        update: result?.update
+      });
+      return { success: true, messageId: result?.key?.id, remoteJid: result?.key?.remoteJid };
     } catch (error) {
       logger.error('Failed to send message:', error);
       return { success: false, error: error.message };
