@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot Webhook - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 ChatBot Webhook</h1>
+            <p>LastLink + WhatsApp Integration</p>
+            <div class="status-badge" id="serverStatus">
+                <span class="status-dot"></span>
+                <span>Verificando...</span>
+            </div>
+        </header>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-icon">🌐</div>
+                <div class="card-info">
+                    <h3>Servidor</h3>
+                    <p id="serverStatusText">Offline</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📱</div>
+                <div class="card-info">
+                    <h3>WhatsApp</h3>
+                    <p id="whatsappStatusText">Desconectado</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📨</div>
+                <div class="card-info">
+                    <h3>Mensagens</h3>
+                    <p id="messageCount">0</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🕐</div>
+                <div class="card-info">
+                    <h3>Última Mensagem</h3>
+                    <p id="lastMessageTime">Nunca</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel webhook-tester">
+                <h2>🧪 Testar Webhook</h2>
+                <form id="webhookForm">
+                    <div class="form-group">
+                        <label for="nome">Nome</label>
+                        <input type="text" id="nome" placeholder="João Silva" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefone">Telefone</label>
+                        <input type="tel" id="telefone" placeholder="11999999999" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="produto">Produto</label>
+                        <input type="text" id="produto" placeholder="Curso Online XYZ" required>
+                    </div>
+                    <button type="submit" class="btn-primary">
+                        <span>Enviar Mensagem</span>
+                        <span class="btn-icon">→</span>
+                    </button>
+                </form>
+                <div id="webhookResponse" class="response-box hidden"></div>
+            </div>
+
+            <div class="panel message-log">
+                <h2>📋 Log de Mensagens</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Nome</th>
+                                <th>Telefone</th>
+                                <th>Produto</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="messageLog">
+                            <tr class="empty-row">
+                                <td colspan="5">Nenhuma mensagem enviada ainda</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Desenvolvido com ❤️ para LastLink + WhatsApp</p>
+        </footer>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { formatCartMessage } from '../templates/message.js';
 import { WhatsAppService } from '../services/whatsapp.js';
+import { trackMessage } from '../utils/tracker.js';
 
 const whatsappService = new WhatsAppService(process.env.SESSION_DIR);
 
@@ -29,6 +30,8 @@ export async function handleWebhook(req, res) {
   try {
     const message = formatCartMessage(nome, produto);
     const result = await whatsappService.sendMessage(telefone, message);
+
+    trackMessage(nome, telefone, result.success);
 
     if (result.success) {
       res.status(200).json({ success: true });

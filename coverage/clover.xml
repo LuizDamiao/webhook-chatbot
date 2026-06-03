@@ -1,24 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1780452641336" clover="3.2.0">
-  <project timestamp="1780452641336" name="All files">
-    <metrics statements="67" coveredstatements="36" conditionals="47" coveredconditionals="35" methods="8" coveredmethods="4" elements="122" coveredelements="75" complexity="0" loc="67" ncloc="67" packages="4" files="4" classes="4"/>
+<coverage generated="1780516472817" clover="3.2.0">
+  <project timestamp="1780516472817" name="All files">
+    <metrics statements="71" coveredstatements="39" conditionals="49" coveredconditionals="37" methods="9" coveredmethods="4" elements="129" coveredelements="80" complexity="0" loc="71" ncloc="71" packages="4" files="4" classes="4"/>
     <package name="handlers">
-      <metrics statements="13" coveredstatements="13" conditionals="7" coveredconditionals="7" methods="1" coveredmethods="1"/>
+      <metrics statements="17" coveredstatements="16" conditionals="9" coveredconditionals="9" methods="2" coveredmethods="1"/>
       <file name="webhook.js" path="E:\ECOM\2026\PROJETOS\NOVO PROJETO\WEBHOOK\src\handlers\webhook.js">
-        <metrics statements="13" coveredstatements="13" conditionals="7" coveredconditionals="7" methods="1" coveredmethods="1"/>
-        <line num="10" count="6" type="stmt"/>
-        <line num="13" count="6" type="cond" truecount="5" falsecount="0"/>
-        <line num="14" count="3" type="stmt"/>
-        <line num="19" count="3" type="stmt"/>
+        <metrics statements="17" coveredstatements="16" conditionals="9" coveredconditionals="9" methods="2" coveredmethods="1"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="16" count="7" type="stmt"/>
+        <line num="19" count="7" type="cond" truecount="5" falsecount="0"/>
         <line num="20" count="3" type="stmt"/>
-        <line num="21" count="3" type="stmt"/>
-        <line num="22" count="3" type="stmt"/>
-        <line num="24" count="2" type="cond" truecount="2" falsecount="0"/>
-        <line num="25" count="1" type="stmt"/>
-        <line num="27" count="1" type="stmt"/>
-        <line num="28" count="1" type="stmt"/>
-        <line num="31" count="1" type="stmt"/>
-        <line num="32" count="1" type="stmt"/>
+        <line num="25" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="26" count="1" type="stmt"/>
+        <line num="29" count="3" type="stmt"/>
+        <line num="30" count="3" type="stmt"/>
+        <line num="31" count="3" type="stmt"/>
+        <line num="33" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="34" count="1" type="stmt"/>
+        <line num="36" count="1" type="stmt"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="40" count="1" type="stmt"/>
+        <line num="41" count="1" type="stmt"/>
       </file>
     </package>
     <package name="middleware">
