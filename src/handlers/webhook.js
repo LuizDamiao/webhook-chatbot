@@ -1,6 +1,12 @@
 import { formatCartMessage } from '../templates/message.js';
 import { WhatsAppService } from '../services/whatsapp.js';
 
+const whatsappService = new WhatsAppService(process.env.SESSION_DIR);
+
+whatsappService.connect().catch(err => {
+  console.error('Failed to connect WhatsApp:', err);
+});
+
 /**
  * Handle webhook request from LastLink
  * @param {object} req - Express request
@@ -16,8 +22,11 @@ export async function handleWebhook(req, res) {
     });
   }
 
+  if (!whatsappService.isConnected) {
+    return res.status(503).json({ error: 'WhatsApp not connected' });
+  }
+
   try {
-    const whatsappService = new WhatsAppService(process.env.SESSION_DIR);
     const message = formatCartMessage(nome, produto);
     const result = await whatsappService.sendMessage(telefone, message);
 
@@ -32,5 +41,7 @@ export async function handleWebhook(req, res) {
     res.status(500).json({ error: 'Failed to send message' });
   }
 }
+
+export { whatsappService };
 
 

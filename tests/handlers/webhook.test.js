@@ -1,12 +1,17 @@
 import { jest } from '@jest/globals';
 
+const mockSendMessage = jest.fn().mockResolvedValue({ success: true });
+const mockIsConnected = { value: true };
+
 jest.unstable_mockModule('../../src/templates/message.js', () => ({
   formatCartMessage: jest.fn().mockReturnValue('Mocked message')
 }));
 
 jest.unstable_mockModule('../../src/services/whatsapp.js', () => ({
   WhatsAppService: jest.fn().mockImplementation(() => ({
-    sendMessage: jest.fn().mockResolvedValue({ success: true })
+    get isConnected() { return mockIsConnected.value; },
+    connect: jest.fn().mockResolvedValue(undefined),
+    sendMessage: mockSendMessage
   }))
 }));
 
@@ -16,6 +21,8 @@ describe('handleWebhook', () => {
   let req, res;
 
   beforeEach(() => {
+    mockSendMessage.mockReset().mockResolvedValue({ success: true });
+    mockIsConnected.value = true;
     req = {
       body: {
         nome: 'João Silva',
@@ -56,11 +63,15 @@ describe('handleWebhook', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Missing required fields: nome, telefone, produto' });
   });
 
+  it('should return 503 if WhatsApp is not connected', async () => {
+    mockIsConnected.value = false;
+    await handleWebhook(req, res);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ error: 'WhatsApp not connected' });
+  });
+
   it('should return 500 if sendMessage throws', async () => {
-    const { WhatsAppService } = await import('../../src/services/whatsapp.js');
-    WhatsAppService.mockImplementation(() => ({
-      sendMessage: jest.fn().mockRejectedValue(new Error('Connection failed'))
-    }));
+    mockSendMessage.mockRejectedValue(new Error('Connection failed'));
 
     await handleWebhook(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
@@ -68,10 +79,7 @@ describe('handleWebhook', () => {
   });
 
   it('should return 500 if sendMessage returns success false', async () => {
-    const { WhatsAppService } = await import('../../src/services/whatsapp.js');
-    WhatsAppService.mockImplementation(() => ({
-      sendMessage: jest.fn().mockResolvedValue({ success: false, error: 'Not connected' })
-    }));
+    mockSendMessage.mockResolvedValue({ success: false, error: 'Not connected' });
 
     await handleWebhook(req, res);
     expect(res.status).toHaveBeenCalledWith(500);

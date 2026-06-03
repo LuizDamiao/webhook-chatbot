@@ -1,4 +1,10 @@
 import 'dotenv/config';
+
+if (!process.env.WEBHOOK_TOKEN) {
+  console.error('WEBHOOK_TOKEN environment variable is required');
+  process.exit(1);
+}
+
 import express from 'express';
 import { authMiddleware } from './middleware/auth.js';
 import { handleWebhook } from './handlers/webhook.js';
