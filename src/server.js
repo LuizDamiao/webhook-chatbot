@@ -52,7 +52,7 @@ app.get('/health', (req, res) => {
 });
 
 // Debug: log ALL requests (GET, POST, anything)
-app.all('*', (req, res, next) => {
+app.all('/{*splat}', (req, res, next) => {
   if (req.method === 'GET' && req.path === '/health') return next();
   console.log(`[${new Date().toISOString()}] ALL ${req.method} ${req.originalUrl} from ${req.ip}`);
   next();
@@ -208,7 +208,7 @@ app.get('/api/webhook-raw', (req, res) => {
 });
 
 // Catch-all POST to debug any incoming request
-app.post('*', (req, res) => {
+app.post('/{*splat}', (req, res) => {
   const entry = {
     timestamp: new Date().toISOString(),
     endpoint: req.originalUrl,
