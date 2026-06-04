@@ -241,7 +241,9 @@ async function addCategory() {
 }
 
 function openNewEventModal() {
-  document.getElementById('newEventModal').classList.remove('hidden');
+  const modal = document.getElementById('newEventModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
   document.getElementById('newEventKey').value = '';
   document.getElementById('newEventLabel').value = '';
   document.getElementById('newEventMessage').value = 'Olá {nome}! {mensagem}';
@@ -250,6 +252,7 @@ function openNewEventModal() {
 
 function closeNewEventModal() {
   document.getElementById('newEventModal').classList.add('hidden');
+  document.body.style.overflow = '';
 }
 
 async function createEvent() {

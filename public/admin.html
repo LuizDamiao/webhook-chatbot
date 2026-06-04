@@ -120,7 +120,7 @@
                 <textarea id="newEventMessage" rows="3" placeholder="Olá {nome}! Sua assinatura foi cancelada."></textarea>
             </div>
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="document.getElementById('newEventModal').classList.add('hidden')">Cancelar</button>
+                <button class="btn-cancel" onclick="document.getElementById('newEventModal').classList.add('hidden'); document.body.style.overflow = '';">Cancelar</button>
                 <button class="btn-save" id="btnCreateEvent">Criar</button>
             </div>
         </div>
