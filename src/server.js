@@ -128,15 +128,20 @@ app.get('/api/qrcode', authJWT, async (req, res) => {
 
 // POST /api/messages - Envia mensagem via WhatsApp
 app.post('/api/messages', authJWT, async (req, res) => {
+  console.log('[POST /api/messages] Body:', JSON.stringify(req.body));
   const { to, phone, text, body } = req.body;
   const recipient = to || phone;
   const messageText = text || body;
 
+  console.log('[POST /api/messages] recipient:', recipient, 'text:', messageText?.substring(0, 50));
+
   if (!recipient || !messageText) {
+    console.log('[POST /api/messages] MISSING FIELDS');
     return res.status(400).json({ error: 'to (or phone) and text (or body) are required' });
   }
 
   if (!whatsappService.isConnected) {
+    console.log('[POST /api/messages] WHATSAPP NOT CONNECTED');
     return res.status(503).json({ error: 'WhatsApp not connected' });
   }
 
@@ -153,10 +158,11 @@ app.post('/api/messages', authJWT, async (req, res) => {
       body: messageText,
       direction: 'outgoing',
       timestamp: new Date().toISOString(),
-      id: result.key?.id || Date.now().toString()
+      id: result.messageId || Date.now().toString()
     };
 
-    messageStore.add(sentMessage);
+    const stored = messageStore.add(sentMessage);
+    console.log(`[MSG] Stored outgoing message: to=${stored.to}, id=${stored.id}, storeCount=${messageStore.count}`);
 
     res.status(200).json({ success: true, message: sentMessage });
   } catch (error) {
@@ -180,7 +186,9 @@ app.get('/api/messages/recent/:count', authJWT, (req, res) => {
 
 // GET /api/messages/phone/:phone - Mensagens de um telefone
 app.get('/api/messages/phone/:phone', authJWT, (req, res) => {
-  const messages = messageStore.getByPhone(req.params.phone);
+  const phone = req.params.phone;
+  const messages = messageStore.getByPhone(phone);
+  console.log(`[MSG] Query phone=${phone}, found=${messages.length}, totalStore=${messageStore.count}`);
   res.json({ messages, count: messages.length });
 });
 

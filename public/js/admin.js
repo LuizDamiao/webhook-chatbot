@@ -1,5 +1,5 @@
 const API_URL = window.API_URL;
-const BASE_URL = window.BASE_URL || (window.location.hostname === 'localhost' ? '' : '/webhook-chatbot');
+const BASE_URL = window.BASE_URL;
 
 const EVENT_LABELS = {
   Abandoned_Cart: 'Carrinho Abandonado',

@@ -1,7 +1,7 @@
 // ─── Config ──────────────────────────────────────────────────
-// API_URL is defined in auth.js as a global const
-// BASE_URL: compute independently to avoid timing issues
-const BASE_URL = window.BASE_URL || (window.location.hostname === 'localhost' ? '' : '/webhook-chatbot');
+// API_URL and BASE_URL are defined in auth.js and exported via window.*
+const API_URL = window.API_URL;
+const BASE_URL = window.BASE_URL;
 
 const EVENT_LABELS = {
     Abandoned_Cart: 'Carrinho Abandonado',
