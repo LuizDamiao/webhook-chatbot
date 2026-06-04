@@ -84,3 +84,5 @@ window.auth = {
   logout,
   API_URL
 };
+
+window.API_URL = API_URL;
