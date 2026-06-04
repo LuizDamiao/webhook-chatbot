@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Templates</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <a href="/" class="back-link">&#8592;</a>
+            <h1>Gerenciar Templates</h1>
+        </div>
+        <button class="btn-logout" id="logoutBtn">Sair</button>
+    </header>
+
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-title">Templates</div>
+            <ul class="template-list" id="templateList">
+            </ul>
+        </aside>
+
+        <main class="editor-area" id="editorArea">
+            <div class="editor-placeholder" id="editorPlaceholder">
+                <div class="icon">&#128221;</div>
+                <p>Selecione um template na barra lateral para editar</p>
+            </div>
+
+            <div class="editor-panel hidden" id="editorPanel">
+                <div class="editor-header">
+                    <h2 id="editorTitle"></h2>
+                    <span class="event-badge" id="editorEvent"></span>
+                </div>
+
+                <div class="form-section">
+                    <h3>&#9998; Mensagem</h3>
+                    <div class="form-group">
+                        <textarea id="messageInput" rows="5" placeholder="Digite a mensagem do template..."></textarea>
+                        <div class="variables-help">
+                            <div class="title">Variáveis disponíveis</div>
+                            <div class="var-list">
+                                <span class="var-tag">{nome}</span>
+                                <span class="var-tag">{produto}</span>
+                                <span class="var-tag">{preco}</span>
+                                <span class="var-tag">{email}</span>
+                                <span class="var-tag">{oferta}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h3>&#128065; Pré-visualização</h3>
+                    <div class="preview-bubble" id="previewBubble"></div>
+                    <div class="preview-time" id="previewTime"></div>
+                </div>
+
+                <button class="btn-save" id="saveBtn">
+                    <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round">
+                            <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
+                    <span class="btn-text">Salvar Alterações</span>
+                </button>
+            </div>
+
+            <div class="categories-section" style="margin-top: 32px;">
+                <h3>&#128193; Categorias de Produtos</h3>
+                <div class="category-form">
+                    <input type="text" id="catKey" placeholder="Chave (ex: ebook)">
+                    <input type="text" id="catName" placeholder="Nome (ex: E-book)">
+                    <input type="text" id="catKeywords" placeholder="Palavras-chave (separadas por vírgula)">
+                    <button class="btn-add-category" id="addCatBtn">Adicionar</button>
+                </div>
+                <div class="categories-grid" id="categoriesGrid">
+                    <div class="empty-state">Carregando categorias...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
