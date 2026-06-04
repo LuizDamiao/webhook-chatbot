@@ -8,7 +8,8 @@ if (!process.env.WEBHOOK_TOKEN) {
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { authMiddleware } from './middleware/auth.js';
+import jwt from 'jsonwebtoken';
+import { authMiddleware, authJWT } from './middleware/auth.js';
 import { handleWebhook, whatsappService, parseLastLinkData } from './handlers/webhook.js';
 import { getStats, getLogs, trackMessage } from './utils/tracker.js';
 import { formatPhone } from './services/whatsapp.js';
@@ -67,8 +68,29 @@ app.all('/{*splat}', (req, res, next) => {
   next();
 });
 
+// API: Auth - returns JWT token
+app.post('/api/auth', authLimiter, async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+  }
+
+  if (username !== DASHBOARD_USER || password !== DASHBOARD_PASSWORD) {
+    return res.status(401).json({ error: 'Credenciais inválidas' });
+  }
+
+  const token = jwt.sign(
+    { username, iat: Math.floor(Date.now() / 1000) },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  res.json({ token, expiresIn: 86400 });
+});
+
 // API: Server and WhatsApp status
-app.get('/api/status', (req, res) => {
+app.get('/api/status', authJWT, (req, res) => {
   res.json({
     server: {
       status: 'online',
@@ -86,7 +108,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // API: Get QR code for WhatsApp connection
-app.get('/api/qrcode', (req, res) => {
+app.get('/api/qrcode', authJWT, (req, res) => {
   const qr = whatsappService.getQRCode();
   if (qr) {
     res.json({ qr });
