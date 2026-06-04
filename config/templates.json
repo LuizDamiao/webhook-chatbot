@@ -1,0 +1,38 @@
+{
+  "Abandoned_Cart": {
+    "message": "Olá {nome}! Notamos que você deixou {produto} no carrinho. Precisa de ajuda? Estamos aqui para você! Responda esta mensagem para falar conosco.",
+    "category": "default",
+    "variables": [
+      "nome",
+      "produto",
+      "preco"
+    ]
+  },
+  "Purchase_Order_Confirmed": {
+    "message": "Olá {nome}! Sua compra de {produto} foi confirmada com sucesso! Obrigado pela preferência. Em caso de dúvidas, responda esta mensagem.",
+    "category": "default",
+    "variables": [
+      "nome",
+      "produto",
+      "preco"
+    ]
+  },
+  "Purchase_Request_Canceled": {
+    "message": "Olá {nome}, seu pedido de {produto} foi cancelado. Se mudar de ideia, estamos à disposição. Responda esta mensagem para falar conosco.",
+    "category": "default",
+    "variables": [
+      "nome",
+      "produto",
+      "preco"
+    ]
+  },
+  "Purchase_Request_Confirmed": {
+    "message": "Olá {nome}! Sua fatura para {produto} no valor de {preco} foi gerada. Acesse o link de pagamento ou responda esta mensagem para mais informações.",
+    "category": "default",
+    "variables": [
+      "nome",
+      "produto",
+      "preco"
+    ]
+  }
+}
