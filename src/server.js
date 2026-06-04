@@ -12,6 +12,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { handleWebhook, whatsappService } from './handlers/webhook.js';
 import { getStats, getLogs, trackMessage } from './utils/tracker.js';
 import { formatPhone } from './services/whatsapp.js';
+import { parseLastLinkData } from './handlers/webhook.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -118,7 +119,7 @@ app.post('/api/webhook', async (req, res) => {
   webhookLog.unshift(entry);
   if (webhookLog.length > MAX_WEBHOOK_LOG) webhookLog.pop();
 
-  const { nome, telefone, produto } = req.body;
+  const { nome, telefone, produto } = parseLastLinkData(req.body);
 
   if (!nome || !telefone || !produto) {
     return res.status(400).json({

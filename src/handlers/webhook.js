@@ -9,12 +9,53 @@ whatsappService.connect().catch(err => {
 });
 
 /**
+ * Clean phone number from LastLink format (+5500987645312 → 5500987645312)
+ * @param {string} phone - Raw phone number
+ * @returns {string} Cleaned phone number
+ */
+function cleanPhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/[^0-9]/g, '');
+}
+
+/**
+ * Parse LastLink webhook data into our format
+ * @param {object} body - Raw webhook body
+ * @returns {object} Parsed data { nome, telefone, produto }
+ */
+function parseLastLinkData(body) {
+  // LastLink format
+  if (body.Data?.Buyer) {
+    const buyer = body.Data.Buyer;
+    const products = body.Data.Products || [];
+
+    const nome = buyer.Name;
+    const telefone = cleanPhone(buyer.PhoneNumber);
+
+    // Join product names (filter out ones without price, e.g. subscriptions)
+    const productNames = products
+      .filter(p => p.Name && p.Price)
+      .map(p => p.Name);
+    const produto = productNames.join(', ') || 'Produtos';
+
+    return { nome, telefone, produto };
+  }
+
+  // Legacy format (direct fields)
+  return {
+    nome: body.nome,
+    telefone: body.telefone,
+    produto: body.produto
+  };
+}
+
+/**
  * Handle webhook request from LastLink
  * @param {object} req - Express request
  * @param {object} res - Express response
  */
 export async function handleWebhook(req, res) {
-  const { nome, telefone, produto } = req.body;
+  const { nome, telefone, produto } = parseLastLinkData(req.body);
 
   // Validate required fields
   if (!nome || !telefone || !produto) {
@@ -48,6 +89,6 @@ export async function handleWebhook(req, res) {
   }
 }
 
-export { whatsappService };
+export { whatsappService, parseLastLinkData };
 
 
