@@ -14,6 +14,7 @@ import { handleWebhook, whatsappService, parseLastLinkData } from './handlers/we
 import { getStats, getLogs, trackMessage } from './utils/tracker.js';
 import { formatPhone } from './services/whatsapp.js';
 import { authLimiter } from './middleware/rateLimiter.js';
+import { messageStore } from './services/messageStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -115,6 +116,55 @@ app.get('/api/qrcode', authJWT, (req, res) => {
   } else {
     res.json({ qr: null, message: 'No QR code available. WhatsApp might be connected or not started yet.' });
   }
+});
+
+// GET /api/messages - Retorna todas as mensagens
+app.get('/api/messages', authJWT, (req, res) => {
+  const messages = messageStore.getAll();
+  res.json({ messages, count: messages.length });
+});
+
+// GET /api/messages/recent/:count - Retorna últimas N mensagens
+app.get('/api/messages/recent/:count', authJWT, (req, res) => {
+  const count = parseInt(req.params.count) || 50;
+  const messages = messageStore.getRecent(count);
+  res.json({ messages, count: messages.length });
+});
+
+// GET /api/messages/phone/:phone - Mensagens de um telefone
+app.get('/api/messages/phone/:phone', authJWT, (req, res) => {
+  const messages = messageStore.getByPhone(req.params.phone);
+  res.json({ messages, count: messages.length });
+});
+
+// GET /api/contacts - Lista contatos únicos das mensagens
+app.get('/api/contacts', authJWT, (req, res) => {
+  const messages = messageStore.getAll();
+  const contactMap = new Map();
+
+  messages.forEach(msg => {
+    const phone = msg.direction === 'outgoing' ? msg.to : msg.from;
+    if (phone && phone !== 'bot') {
+      if (!contactMap.has(phone)) {
+        contactMap.set(phone, {
+          phone,
+          name: msg.customerName || phone,
+          lastMessage: msg.body,
+          lastMessageTime: msg.timestamp,
+          unread: 0
+        });
+      } else {
+        const contact = contactMap.get(phone);
+        contact.lastMessage = msg.body;
+        contact.lastMessageTime = msg.timestamp;
+      }
+    }
+  });
+
+  const contacts = Array.from(contactMap.values())
+    .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+
+  res.json({ contacts, count: contacts.length });
 });
 
 // API: Request pairing code (alternative to QR)
