@@ -8,15 +8,6 @@ let refreshMessages = null;
 let refreshContacts = null;
 let refreshStatus = null;
 
-function checkAuth() {
-    const token = localStorage.getItem('dashboard_token');
-    if (!token) {
-        window.location.href = '/login.html';
-        return false;
-    }
-    return true;
-}
-
 async function authFetch(url, options = {}) {
     const token = localStorage.getItem('dashboard_token');
     if (!token) {
@@ -78,7 +69,7 @@ function renderContacts(contacts) {
         const isActive = selectedContact === phone;
 
         return `
-            <div class="contact-item ${isActive ? 'active' : ''}" onclick="selectContact('${phone}')">
+            <div class="contact-item ${isActive ? 'active' : ''}" data-phone="${escapeHtml(phone)}">
                 <div class="contact-avatar">${initials}</div>
                 <div class="contact-info">
                     <div class="contact-name">${escapeHtml(name)}</div>
@@ -143,8 +134,7 @@ function selectContact(phone) {
     const contacts = document.querySelectorAll('.contact-item');
 
     contacts.forEach(el => {
-        const onclick = el.getAttribute('onclick') || '';
-        if (onclick.includes(phone)) {
+        if (el.dataset.phone === phone) {
             if (headerName) headerName.textContent = phone;
             if (headerStatus) headerStatus.textContent = 'online';
         }
@@ -185,12 +175,6 @@ async function updateWhatsAppStatus() {
     }
 }
 
-function logout() {
-    localStorage.removeItem('dashboard_token');
-    localStorage.removeItem('dashboard_user');
-    window.location.href = '/login.html';
-}
-
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -227,6 +211,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
+    const contactsList = document.getElementById('contactsList');
+    if (contactsList) {
+        contactsList.addEventListener('click', (e) => {
+            const contactItem = e.target.closest('.contact-item');
+            if (contactItem && contactItem.dataset.phone) {
+                selectContact(contactItem.dataset.phone);
+            }
+        });
+    }
+
     const searchInput = document.getElementById('contactSearch');
     if (searchInput) {
         searchInput.addEventListener('input', async (e) => {
@@ -258,7 +252,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const messages = await loadMessages(selectedContact);
                 allMessages = messages;
                 renderMessages(messages);
-            } catch {}
+            } catch (error) {
+                console.error('Erro ao enviar mensagem:', error);
+                alert('Erro ao enviar mensagem. Tente novamente.');
+            }
         };
         sendBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', (e) => {
@@ -279,13 +276,11 @@ window.addEventListener('beforeunload', stopAutoRefresh);
 
 window.chat = {
     API_URL,
-    checkAuth,
     authFetch,
     loadContacts,
     loadMessages,
     renderContacts,
     renderMessages,
     selectContact,
-    updateWhatsAppStatus,
-    logout
+    updateWhatsAppStatus
 };
