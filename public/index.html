@@ -3,113 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatBot Webhook - Dashboard</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>ChatBot - WhatsApp</title>
+    <link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🤖 ChatBot Webhook</h1>
-            <p>LastLink + WhatsApp Integration</p>
-            <div class="status-badge" id="serverStatus">
-                <span class="status-dot"></span>
-                <span>Verificando...</span>
+    <div class="chat-app">
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <div class="chat-logo">💬</div>
+                <div>
+                    <div class="chat-title">ChatBot Webhook</div>
+                    <div class="chat-subtitle">LastLink + WhatsApp</div>
+                </div>
             </div>
+            <button class="btn-logout" id="logoutBtn">Sair</button>
         </header>
 
-        <div class="cards-grid">
-            <div class="card">
-                <div class="card-icon">🌐</div>
-                <div class="card-info">
-                    <h3>Servidor</h3>
-                    <p id="serverStatusText">Offline</p>
+        <main class="chat-main">
+            <aside class="contacts-sidebar" id="contactsSidebar">
+                <div class="contacts-header">
+                    <h3>Contatos</h3>
                 </div>
-            </div>
-            <div class="card">
-                <div class="card-icon">📱</div>
-                <div class="card-info">
-                    <h3>WhatsApp</h3>
-                    <p id="whatsappStatusText">Desconectado</p>
+                <div class="contacts-search">
+                    <input type="text" id="contactSearch" placeholder="Buscar contato...">
                 </div>
-            </div>
-            <div class="card">
-                <div class="card-icon">📨</div>
-                <div class="card-info">
-                    <h3>Mensagens</h3>
-                    <p id="messageCount">0</p>
+                <div class="contacts-list" id="contactsList">
+                    <div class="no-contacts">Nenhum contato encontrado</div>
                 </div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🕐</div>
-                <div class="card-info">
-                    <h3>Última Mensagem</h3>
-                    <p id="lastMessageTime">Nunca</p>
-                </div>
-            </div>
-        </div>
+            </aside>
 
-        <div id="qrCodeSection" class="qr-code-section" style="display: none;">
-            <div class="panel qr-panel">
-                <h2>📱 Conectar WhatsApp</h2>
-                <p>Escaneie o QR Code abaixo com o WhatsApp:</p>
-                <div id="qrCodeContainer" class="qr-container">
-                    <img id="qrCodeImage" src="" alt="QR Code WhatsApp" />
-                </div>
-                <p class="qr-instruction">Abra o WhatsApp → Dispositivos Conectados → Conectar Dispositivo</p>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <div class="panel webhook-tester">
-                <h2>🧪 Testar Webhook</h2>
-                <form id="webhookForm">
-                    <div class="form-group">
-                        <label for="nome">Nome</label>
-                        <input type="text" id="nome" placeholder="João Silva" required>
+            <section class="chat-area">
+                <div class="chat-area-header" id="chatAreaHeader" style="display:none;">
+                    <div class="contact-avatar" id="chatAreaAvatar">--</div>
+                    <div>
+                        <div class="chat-area-name" id="chatAreaName">Selecione um contato</div>
+                        <div class="chat-area-status" id="chatAreaStatus"></div>
                     </div>
-                    <div class="form-group">
-                        <label for="telefone">Telefone</label>
-                        <input type="tel" id="telefone" placeholder="11999999999" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="produto">Produto</label>
-                        <input type="text" id="produto" placeholder="Curso Online XYZ" required>
-                    </div>
-                    <button type="submit" class="btn-primary">
-                        <span>Enviar Mensagem</span>
-                        <span class="btn-icon">→</span>
-                    </button>
-                </form>
-                <div id="webhookResponse" class="response-box hidden"></div>
-            </div>
-
-            <div class="panel message-log">
-                <h2>📋 Log de Mensagens</h2>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Data/Hora</th>
-                                <th>Nome</th>
-                                <th>Telefone</th>
-                                <th>Produto</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="messageLog">
-                            <tr class="empty-row">
-                                <td colspan="5">Nenhuma mensagem enviada ainda</td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
-            </div>
-        </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="empty-chat">
+                        <div class="empty-chat-icon">💬</div>
+                        <h3>Selecione um contato</h3>
+                        <p>Escolha uma conversa para ver as mensagens</p>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea class="chat-input" id="chatInput" placeholder="Digite uma mensagem..." rows="1"></textarea>
+                    <button class="btn-send" id="sendBtn">➤</button>
+                </div>
+            </section>
+        </main>
 
-        <footer>
-            <p>Desenvolvido com ❤️ para LastLink + WhatsApp</p>
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Verificando status...</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #8696a0;">LastLink + WhatsApp Integration</div>
         </footer>
     </div>
-    <script src="js/app.js"></script>
+
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
 </body>
 </html>
