@@ -33,6 +33,23 @@ router.put('/:event', authJWT, async (req, res) => {
   res.json({ success: true });
 });
 
+// POST /api/templates — cria novo evento de template
+router.post('/', authJWT, async (req, res) => {
+  const { event, message, label } = req.body;
+  if (!event || !message) {
+    return res.status(400).json({ error: 'Event e message são obrigatórios' });
+  }
+  await templateService.updateTemplate(event, { message, category: 'default', label });
+  res.json({ success: true });
+});
+
+// DELETE /api/templates/:event — remove template de um evento
+router.delete('/:event', authJWT, async (req, res) => {
+  const { event } = req.params;
+  await templateService.deleteTemplate(event);
+  res.json({ success: true });
+});
+
 // POST /api/templates/test — testa renderização de template
 router.post('/test', authJWT, (req, res) => {
   const { event, data } = req.body;

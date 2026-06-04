@@ -480,3 +480,171 @@ body {
         max-width: 90%;
     }
 }
+
+/* ─── Header Navigation ─────────────────────────────── */
+.header-nav {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.nav-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
+.nav-btn.active {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+/* ─── Admin Sidebar Header ──────────────────────────── */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px 16px;
+}
+
+.sidebar-header .sidebar-title {
+    padding: 0;
+    margin: 0;
+}
+
+.btn-new-event {
+    background: #25d366;
+    color: #111b21;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-new-event:hover {
+    background: #2bd474;
+}
+
+/* ─── Delete Event Button ───────────────────────────── */
+.btn-delete-event {
+    background: transparent;
+    color: #ff4757;
+    border: 1px solid #ff4757;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.btn-delete-event:hover {
+    background: #ff4757;
+    color: #fff;
+}
+
+/* ─── Modal ─────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal {
+    background: #1f2c34;
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 480px;
+    border: 1px solid #2a3942;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.modal h3 {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    color: #e9edef;
+}
+
+.modal .form-group {
+    margin-bottom: 16px;
+}
+
+.modal .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #8696a0;
+    margin-bottom: 6px;
+}
+
+.modal .form-group input,
+.modal .form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: #2a3942;
+    border: 1px solid #374045;
+    border-radius: 8px;
+    color: #e9edef;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.modal .form-group input:focus,
+.modal .form-group textarea:focus {
+    outline: none;
+    border-color: #25d366;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    background: transparent;
+    color: #8696a0;
+    border: 1px solid #374045;
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #374045;
+    color: #e9edef;
+}
+
+/* ─── Hidden utility ────────────────────────────────── */
+.hidden {
+    display: none !important;
+}

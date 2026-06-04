@@ -89,6 +89,11 @@ export class TemplateService {
     return this.#templates[event];
   }
 
+  deleteTemplate(event) {
+    delete this.#templates[event];
+    this.save();
+  }
+
   getAllTemplates() {
     return { ...this.#templates };
   }
