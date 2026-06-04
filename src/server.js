@@ -181,8 +181,8 @@ app.post('/api/diagnostic', async (req, res) => {
   }
 });
 
-// Webhook endpoint with authentication (original)
-app.post('/webhook', authMiddleware, (req, res, next) => {
+// Webhook endpoint for LastLink
+app.post('/webhook', (req, res, next) => {
   const entry = {
     timestamp: new Date().toISOString(),
     headers: {
