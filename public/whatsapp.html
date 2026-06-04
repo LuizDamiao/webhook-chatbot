@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp - ChatBot</title>
+    <link rel="stylesheet" href="css/chat.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="chat-app">
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <div class="chat-logo">💬</div>
+                <div>
+                    <div class="chat-title">ChatBot Webhook</div>
+                    <div class="chat-subtitle">LastLink + WhatsApp</div>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <a href="index.html" class="nav-btn">💬 Chat</a>
+                <a href="whatsapp.html" class="nav-btn active">📱 WhatsApp</a>
+                <a href="admin.html" class="nav-btn">⚙️ Templates</a>
+            </nav>
+            <button class="btn-logout" id="logoutBtn">Sair</button>
+        </header>
+
+        <main class="wa-main">
+            <!-- DESConectado: mostra QR -->
+            <div class="wa-connect-panel" id="waConnect">
+                <div class="wa-connect-card">
+                    <div class="wa-icon" id="waIcon">📱</div>
+                    <h2 id="waTitle">Conectar WhatsApp</h2>
+                    <p class="wa-desc" id="waDesc">Escaneie o QR Code com seu WhatsApp para conectar</p>
+
+                    <div class="wa-qr-container" id="waQrContainer">
+                        <canvas id="qrCanvas"></canvas>
+                        <p class="wa-qr-hint">Abra WhatsApp → Configurações → Aparelhos → Conectar aparelho</p>
+                    </div>
+
+                    <div class="wa-loading hidden" id="waLoading">
+                        <div class="wa-spinner"></div>
+                        <p>Obtendo QR Code...</p>
+                    </div>
+
+                    <div class="wa-error hidden" id="waError">
+                        <p id="waErrorMsg"></p>
+                        <button class="btn-save" id="waRetryBtn">Tentar Novamente</button>
+                    </div>
+
+                    <button class="btn-save wa-refresh-btn" id="waRefreshBtn">
+                        <span class="btn-text">🔄 Atualizar QR Code</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Conectado: mostra info -->
+            <div class="wa-connected-panel hidden" id="waConnected">
+                <div class="wa-connected-card">
+                    <div class="wa-connected-icon">✅</div>
+                    <h2>WhatsApp Conectado</h2>
+                    <div class="wa-connected-info">
+                        <div class="wa-info-row">
+                            <span class="wa-info-label">Status</span>
+                            <span class="wa-info-value wa-status-online">Online</span>
+                        </div>
+                        <div class="wa-info-row">
+                            <span class="wa-info-label">Sessão</span>
+                            <span class="wa-info-value" id="waSessionInfo">-</span>
+                        </div>
+                    </div>
+                    <p class="wa-connected-hint">As mensagens do webhook serão enviadas automaticamente via WhatsApp.</p>
+                    <button class="btn-save wa-refresh-btn" id="waRefreshStatus">
+                        <span class="btn-text">🔄 Atualizar Status</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Verificando status...</span>
+            </div>
+            <div>LastLink + WhatsApp Integration</div>
+        </footer>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/whatsapp.js"></script>
+</body>
+</html>
