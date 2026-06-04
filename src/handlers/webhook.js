@@ -2,6 +2,7 @@ import { formatCartMessage } from '../templates/message.js';
 import { WhatsAppService } from '../services/whatsapp.js';
 import { trackMessage } from '../utils/tracker.js';
 import { messageStore } from '../services/messageStore.js';
+import { templateService } from '../services/templateService.js';
 
 const whatsappService = new WhatsAppService(process.env.SESSION_DIR);
 
@@ -39,14 +40,20 @@ function parseLastLinkData(body) {
       .map(p => p.Name);
     const produto = productNames.join(', ') || 'Produtos';
 
-    return { nome, telefone, produto };
+    return {
+      nome,
+      telefone,
+      produto,
+      event: body.Event || 'Abandoned_Cart'
+    };
   }
 
   // Legacy format (direct fields)
   return {
     nome: body.nome,
     telefone: body.telefone,
-    produto: body.produto
+    produto: body.produto,
+    event: 'Abandoned_Cart'
   };
 }
 
@@ -56,7 +63,7 @@ function parseLastLinkData(body) {
  * @param {object} res - Express response
  */
 export async function handleWebhook(req, res, data) {
-  const { nome, telefone, produto } = parseLastLinkData(req.body);
+  const { nome, telefone, produto, event } = parseLastLinkData(req.body);
 
   // Validate required fields
   if (!nome || !telefone || !produto) {
@@ -70,10 +77,16 @@ export async function handleWebhook(req, res, data) {
   }
 
   try {
-    const message = formatCartMessage(
-      nome.normalize('NFC'),
-      produto.normalize('NFC')
-    );
+    const template = templateService.getTemplate(event);
+    const message = template
+      ? templateService.renderTemplate(template.message, {
+          nome: nome.normalize('NFC'),
+          produto: produto.normalize('NFC'),
+          preco: produto,
+          email: req.body.Data?.Buyer?.Email || '',
+          oferta: req.body.Data?.Offer?.Url || ''
+        })
+      : formatCartMessage(nome.normalize('NFC'), produto.normalize('NFC'));
     const result = await whatsappService.sendMessage(telefone, message);
 
     trackMessage(nome, telefone, result.success);
