@@ -175,21 +175,20 @@ export class WhatsAppService {
     } else {
       const formattedPhone = formatPhone(phone);
       jid = `${formattedPhone}@s.whatsapp.net`;
-    }
-
-    try {
-      const [exists] = await this.sock.onWhatsApp(jid);
-      if (!exists?.exists) {
-        logger.warn(`Phone ${phone} does not exist on WhatsApp`);
-        return { success: false, error: 'Phone number not found on WhatsApp' };
+      try {
+        const [exists] = await this.sock.onWhatsApp(jid);
+        if (!exists?.exists) {
+          logger.warn(`Phone ${phone} does not exist on WhatsApp`);
+          return { success: false, error: 'Phone number not found on WhatsApp' };
+        }
+        if (exists.jid && exists.jid !== jid) {
+          logger.info(`Canonical JID differs: input=${jid} canonical=${exists.jid}`);
+          jid = exists.jid;
+        }
+        logger.info(`Phone ${phone} verified on WhatsApp, using JID: ${jid}`);
+      } catch (checkErr) {
+        logger.warn('onWhatsApp check failed, proceeding anyway:', checkErr.message);
       }
-      if (exists.jid && exists.jid !== jid) {
-        logger.info(`Canonical JID differs: input=${jid} canonical=${exists.jid}`);
-        jid = exists.jid;
-      }
-      logger.info(`Phone ${phone} verified on WhatsApp, using JID: ${jid}`);
-    } catch (checkErr) {
-      logger.warn('onWhatsApp check failed, proceeding anyway:', checkErr.message);
     }
 
     try {
