@@ -71,15 +71,25 @@ function showError(msg) {
 function renderQR(qrData) {
     const container = document.getElementById('qrContainer');
     if (!container) return;
+    if (typeof QRCode === 'undefined') {
+        console.warn('QRCode library not loaded yet, retrying...');
+        setTimeout(() => renderQR(qrData), 500);
+        return;
+    }
     container.innerHTML = '';
-    new QRCode(container, {
-        text: qrData,
-        width: 260,
-        height: 260,
-        colorDark: '#1f2c34',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    try {
+        new QRCode(container, {
+            text: qrData,
+            width: 260,
+            height: 260,
+            colorDark: '#1f2c34',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } catch (err) {
+        console.error('QR render error:', err);
+        showError('Erro ao gerar QR Code');
+    }
 }
 
 async function loadQRCode() {
