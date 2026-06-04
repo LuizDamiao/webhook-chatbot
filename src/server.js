@@ -30,8 +30,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON bodies
-app.use(express.json({ limit: '100kb' }));
+// Raw body capture for webhook debugging
+app.use(express.json({ limit: '100kb', verify: (req, res, buf) => { req.rawBody = buf.toString(); } }));
+
+const webhookLog = [];
+const MAX_WEBHOOK_LOG = 20;
 
 // Serve static files from public folder
 app.use(express.static(join(__dirname, '../public')));
@@ -88,6 +91,19 @@ app.post('/api/pairing', async (req, res) => {
 
 // API: Webhook endpoint (returns JSON for dashboard)
 app.post('/api/webhook', async (req, res) => {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    endpoint: '/api/webhook',
+    headers: {
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']
+    },
+    rawBody: req.rawBody || null,
+    body: req.body
+  };
+  webhookLog.unshift(entry);
+  if (webhookLog.length > MAX_WEBHOOK_LOG) webhookLog.pop();
+
   const { nome, telefone, produto } = req.body;
 
   if (!nome || !telefone || !produto) {
@@ -152,7 +168,30 @@ app.post('/api/diagnostic', async (req, res) => {
 });
 
 // Webhook endpoint with authentication (original)
-app.post('/webhook', authMiddleware, handleWebhook);
+app.post('/webhook', authMiddleware, (req, res, next) => {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    headers: {
+      'content-type': req.headers['content-type'],
+      'authorization': req.headers['authorization'] ? '[PRESENT]' : '[MISSING]',
+      'user-agent': req.headers['user-agent'],
+      'x-webhook': req.headers['x-webhook'] || null
+    },
+    rawBody: req.rawBody || null,
+    body: req.body
+  };
+  webhookLog.unshift(entry);
+  if (webhookLog.length > MAX_WEBHOOK_LOG) webhookLog.pop();
+  console.log('=== WEBHOOK RECEIVED FROM LASTLINK ===');
+  console.log(JSON.stringify(entry, null, 2));
+  console.log('======================================');
+  next();
+}, handleWebhook);
+
+// API: Raw webhook log (what LastLink sent)
+app.get('/api/webhook-raw', (req, res) => {
+  res.json({ count: webhookLog.length, webhooks: webhookLog });
+});
 
 // Start server
 const server = app.listen(PORT, () => {
