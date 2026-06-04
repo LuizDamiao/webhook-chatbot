@@ -427,13 +427,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (chatInput && sendBtn) {
         const sendMessage = async () => {
             if (!selectedContact || !chatInput.value.trim()) return;
+            const text = chatInput.value.trim();
+            chatInput.value = '';
             try {
-                await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify({ phone: selectedContact, text: chatInput.value.trim() }) });
-                chatInput.value = '';
+                const response = await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify({ phone: selectedContact, text }) });
+                if (!response) return;
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    showToast(err.error || 'Erro ao enviar mensagem', 'error');
+                    return;
+                }
                 const messages = await loadMessages(selectedContact);
                 allMessages = messages;
                 renderMessages(messages);
-            } catch (err) { console.error('Erro ao enviar:', err); }
+            } catch (err) { console.error('Erro ao enviar:', err); showToast('Erro de conexão', 'error'); }
         };
         sendBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
