@@ -193,6 +193,24 @@ app.get('/api/webhook-raw', (req, res) => {
   res.json({ count: webhookLog.length, webhooks: webhookLog });
 });
 
+// Catch-all POST to debug any incoming request
+app.post('*', (req, res) => {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    endpoint: req.originalUrl,
+    method: req.method,
+    headers: Object.fromEntries(Object.entries(req.headers).filter(([k]) => ['content-type', 'authorization', 'user-agent', 'x-webhook', 'x-forwarded-for', 'host', 'origin', 'referer'].includes(k))),
+    rawBody: req.rawBody || null,
+    body: req.body
+  };
+  webhookLog.unshift(entry);
+  if (webhookLog.length > MAX_WEBHOOK_LOG) webhookLog.pop();
+  console.log('=== CATCH-ALL POST RECEIVED ===');
+  console.log(JSON.stringify(entry, null, 2));
+  console.log('===============================');
+  res.status(200).json({ received: true });
+});
+
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
