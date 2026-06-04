@@ -86,8 +86,8 @@ export async function handleWebhook(req, res, data) {
         direction: 'outgoing',
         status: 'sent',
         type: 'text',
-        customerName: data?.customerName,
-        products: data?.products
+        customerName: data?.nome,
+        products: data?.produto
       });
       res.status(200).json({ success: true });
     } else {
