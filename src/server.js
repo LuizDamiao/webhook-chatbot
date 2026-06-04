@@ -18,6 +18,10 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const DASHBOARD_USER = process.env.DASHBOARD_USER || 'admin';
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'admin';
+const SESSION_DIR = process.env.SESSION_DIR || './auth_info';
 
 function nowBrasilia() {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false });
@@ -74,7 +78,7 @@ app.get('/api/status', (req, res) => {
       connected: whatsappService.isConnected,
       hasQRCode: !!whatsappService.getQRCode(),
       pairingCode: whatsappService.getPairingCode(),
-      sessionDir: process.env.SESSION_DIR || './auth_info'
+      sessionDir: SESSION_DIR
     },
     messages: getStats()
   });
@@ -253,4 +257,5 @@ process.on('SIGINT', () => {
   server.close(() => process.exit(0));
 });
 
+export { JWT_SECRET, DASHBOARD_USER, DASHBOARD_PASSWORD, SESSION_DIR };
 export default app;
