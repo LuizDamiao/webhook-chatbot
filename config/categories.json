@@ -1,0 +1,40 @@
+{
+  "ebook": {
+    "keywords": [
+      "e-book",
+      "ebook",
+      "guia",
+      "pdf",
+      "download"
+    ],
+    "name": "E-book"
+  },
+  "curso": {
+    "keywords": [
+      "curso",
+      "treinamento",
+      "workshop",
+      "aula"
+    ],
+    "name": "Curso"
+  },
+  "consultoria": {
+    "keywords": [
+      "consultoria",
+      "mentoria",
+      "assessoria"
+    ],
+    "name": "Consultoria"
+  },
+  "default": {
+    "keywords": [],
+    "name": "Outros"
+  },
+  "newcategory": {
+    "keywords": [
+      "keyword1",
+      "keyword2"
+    ],
+    "name": "Newcategory"
+  }
+}
