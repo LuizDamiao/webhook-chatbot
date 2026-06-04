@@ -32,12 +32,19 @@ app.use((req, res, next) => {
 
 // Raw body capture for webhook debugging
 app.use(express.json({ limit: '100kb', verify: (req, res, buf) => { req.rawBody = buf.toString(); } }));
+app.use(express.urlencoded({ extended: true, verify: (req, res, buf) => { req.rawBody = buf.toString(); } }));
 
 const webhookLog = [];
 const MAX_WEBHOOK_LOG = 20;
 
 // Serve static files from public folder
 app.use(express.static(join(__dirname, '../public')));
+
+// Log ALL incoming requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip} | Content-Type: ${req.headers['content-type']} | User-Agent: ${req.headers['user-agent']}`);
+  next();
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
