@@ -19,6 +19,10 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function nowBrasilia() {
+  return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false });
+}
+
 // CORS headers for GitHub Pages
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -106,7 +110,7 @@ app.post('/api/pairing', async (req, res) => {
 // API: Webhook endpoint (returns JSON for dashboard)
 app.post('/api/webhook', async (req, res) => {
   const entry = {
-    timestamp: new Date().toISOString(),
+    timestamp: nowBrasilia(),
     endpoint: '/api/webhook',
     headers: {
       'content-type': req.headers['content-type'],
@@ -184,7 +188,7 @@ app.post('/api/diagnostic', async (req, res) => {
 // Webhook endpoint for LastLink
 app.post('/webhook', (req, res, next) => {
   const entry = {
-    timestamp: new Date().toISOString(),
+    timestamp: nowBrasilia(),
     headers: {
       'content-type': req.headers['content-type'],
       'authorization': req.headers['authorization'] ? '[PRESENT]' : '[MISSING]',
@@ -207,10 +211,16 @@ app.get('/api/webhook-raw', (req, res) => {
   res.json({ count: webhookLog.length, webhooks: webhookLog });
 });
 
+// API: Clear webhook log
+app.delete('/api/webhook-raw', (req, res) => {
+  webhookLog.length = 0;
+  res.json({ success: true, message: 'Webhook log cleared' });
+});
+
 // Catch-all POST to debug any incoming request
 app.post('/{*splat}', (req, res) => {
   const entry = {
-    timestamp: new Date().toISOString(),
+    timestamp: nowBrasilia(),
     endpoint: req.originalUrl,
     method: req.method,
     headers: Object.fromEntries(Object.entries(req.headers).filter(([k]) => ['content-type', 'authorization', 'user-agent', 'x-webhook', 'x-forwarded-for', 'host', 'origin', 'referer'].includes(k))),
