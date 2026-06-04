@@ -12,6 +12,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { handleWebhook, whatsappService, parseLastLinkData } from './handlers/webhook.js';
 import { getStats, getLogs, trackMessage } from './utils/tracker.js';
 import { formatPhone } from './services/whatsapp.js';
+import { authLimiter } from './middleware/rateLimiter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
