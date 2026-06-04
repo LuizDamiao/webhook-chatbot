@@ -723,7 +723,8 @@ body {
     display: inline-block;
     margin-bottom: 16px;
 }
-.wa-qr-container canvas { display: block; }
+.wa-qr-container img { display: block; }
+.wa-qr-container canvas { display: block; margin: 0 auto; }
 .wa-qr-hint {
     color: var(--text-secondary);
     font-size: 0.78rem;

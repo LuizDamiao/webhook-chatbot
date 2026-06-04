@@ -69,17 +69,16 @@ function showError(msg) {
 }
 
 function renderQR(qrData) {
-    const canvas = document.getElementById('qrCanvas');
-    if (!canvas) return;
-    QRCode.toCanvas(canvas, qrData, {
+    const container = document.getElementById('qrContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    new QRCode(container, {
+        text: qrData,
         width: 260,
-        margin: 2,
-        color: { dark: '#1f2c34', light: '#e9edef' }
-    }, (err) => {
-        if (err) {
-            console.error('QR render error:', err);
-            showError('Erro ao gerar QR Code');
-        }
+        height: 260,
+        colorDark: '#1f2c34',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
     });
 }
 

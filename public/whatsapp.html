@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp - ChatBot</title>
     <link rel="stylesheet" href="css/chat.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="chat-app">
@@ -34,7 +34,7 @@
                     <p class="wa-desc" id="waDesc">Escaneie o QR Code com seu WhatsApp para conectar</p>
 
                     <div class="wa-qr-container" id="waQrContainer">
-                        <canvas id="qrCanvas"></canvas>
+                        <div id="qrContainer"></div>
                         <p class="wa-qr-hint">Abra WhatsApp → Configurações → Aparelhos → Conectar aparelho</p>
                     </div>
 
