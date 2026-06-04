@@ -2,10 +2,14 @@ const API_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3000'
   : 'https://webhook-chatbot-v2.onrender.com';
 
+const BASE_URL = window.location.hostname === 'localhost'
+  ? ''
+  : '/webhook-chatbot';
+
 function checkAuth() {
   const token = localStorage.getItem('dashboard_token');
   if (token && window.location.pathname.includes('login.html')) {
-    window.location.href = '/';
+    window.location.href = BASE_URL + '/';
     return false;
   }
   return !!token;
@@ -32,7 +36,7 @@ async function login(username, password) {
 function logout() {
   localStorage.removeItem('dashboard_token');
   localStorage.removeItem('dashboard_user');
-  window.location.href = '/login.html';
+  window.location.href = BASE_URL + '/login.html';
 }
 
 function getToken() {
@@ -65,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       try {
         await login(username, password);
-        window.location.href = '/';
+        window.location.href = BASE_URL + '/';
       } catch (error) {
         errorDiv.textContent = error.message;
         errorDiv.style.display = 'block';
@@ -86,3 +90,4 @@ window.auth = {
 };
 
 window.API_URL = API_URL;
+window.BASE_URL = BASE_URL;

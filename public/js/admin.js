@@ -1,4 +1,5 @@
 const API_URL = window.API_URL;
+const BASE_URL = window.BASE_URL || '';
 
 const EVENT_LABELS = {
   Abandoned_Cart: 'Carrinho Abandonado',
@@ -31,7 +32,7 @@ function getToken() {
 
 function checkAuth() {
   if (!getToken()) {
-    window.location.href = '/login.html';
+    window.location.href = BASE_URL + '/login.html';
     return false;
   }
   return true;
@@ -60,7 +61,7 @@ async function apiFetch(path, options = {}) {
 
   if (response.status === 401) {
     localStorage.removeItem('dashboard_token');
-    window.location.href = '/login.html';
+    window.location.href = BASE_URL + '/login.html';
     return null;
   }
 
@@ -239,18 +240,69 @@ async function addCategory() {
   }
 }
 
+function openNewEventModal() {
+  document.getElementById('newEventModal').classList.remove('hidden');
+  document.getElementById('newEventKey').value = '';
+  document.getElementById('newEventLabel').value = '';
+  document.getElementById('newEventMessage').value = 'Olá {nome}! {mensagem}';
+  document.getElementById('newEventKey').focus();
+}
+
+function closeNewEventModal() {
+  document.getElementById('newEventModal').classList.add('hidden');
+}
+
+async function createEvent() {
+  const key = document.getElementById('newEventKey').value.trim();
+  const label = document.getElementById('newEventLabel').value.trim();
+  const message = document.getElementById('newEventMessage').value.trim();
+  if (!key) { showToast('Chave do evento é obrigatória', 'error'); return; }
+  if (!label) { showToast('Nome exibido é obrigatório', 'error'); return; }
+  if (!message) { showToast('Mensagem é obrigatória', 'error'); return; }
+  if (templates[key]) { showToast('Este evento já existe', 'error'); return; }
+  EVENT_LABELS[key] = label;
+  templates[key] = { message, category: 'default', variables: ['nome', 'produto', 'preco'] };
+  await apiFetch('/api/templates', {
+    method: 'POST',
+    body: JSON.stringify({ event: key, message, label })
+  });
+  closeNewEventModal();
+  renderTemplateList();
+  selectTemplate(key);
+  showToast('Evento criado com sucesso!', 'success');
+}
+
+async function deleteEvent() {
+  if (!currentEvent) return;
+  if (!confirm(`Excluir evento "${EVENT_LABELS[currentEvent] || currentEvent}"?`)) return;
+  await apiFetch(`/api/templates/${currentEvent}`, { method: 'DELETE' });
+  delete templates[currentEvent];
+  currentEvent = null;
+  document.getElementById('editorPlaceholder').classList.remove('hidden');
+  document.getElementById('editorPanel').classList.add('hidden');
+  renderTemplateList();
+  showToast('Evento excluído', 'success');
+}
+
 function init() {
   if (!checkAuth()) return;
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('dashboard_token');
     localStorage.removeItem('dashboard_user');
-    window.location.href = '/login.html';
+    window.location.href = BASE_URL + '/login.html';
   });
 
   document.getElementById('messageInput').addEventListener('input', updatePreview);
   document.getElementById('saveBtn').addEventListener('click', saveTemplate);
   document.getElementById('addCatBtn').addEventListener('click', addCategory);
+  document.getElementById('btnNewEvent').addEventListener('click', openNewEventModal);
+  document.getElementById('btnCreateEvent').addEventListener('click', createEvent);
+  document.getElementById('btnDeleteEvent').addEventListener('click', deleteEvent);
+
+  document.getElementById('newEventModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeNewEventModal();
+  });
 
   loadTemplates();
   loadCategories();
