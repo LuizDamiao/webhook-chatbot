@@ -1,6 +1,5 @@
-const API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:3000'
-    : 'https://webhook-chatbot-v2.onrender.com';
+// ─── Config ──────────────────────────────────────────────────
+// API_URL is defined in auth.js as a global const
 
 const EVENT_LABELS = {
     Abandoned_Cart: 'Carrinho Abandonado',
@@ -47,14 +46,25 @@ async function apiFetch(path, options = {}) {
 }
 
 // ─── Tab Navigation ─────────────────────────────────────────
-function switchTab(tab) {
-    document.getElementById('viewChat').style.display = tab === 'chat' ? 'flex' : 'none';
-    document.getElementById('viewTemplates').style.display = tab === 'templates' ? 'grid' : 'none';
-    document.getElementById('navChat').classList.toggle('active', tab === 'chat');
-    document.getElementById('navTemplates').classList.toggle('active', tab === 'templates');
-    if (tab === 'templates') loadTemplates();
-}
-window.switchTab = switchTab;
+window.switchTab = function(tab) {
+    try {
+        const chatView = document.getElementById('viewChat');
+        const templatesView = document.getElementById('viewTemplates');
+        const navChat = document.getElementById('navChat');
+        const navTemplates = document.getElementById('navTemplates');
+
+        if (chatView) chatView.style.display = tab === 'chat' ? 'flex' : 'none';
+        if (templatesView) templatesView.style.display = tab === 'templates' ? 'grid' : 'none';
+        if (navChat) navChat.classList.toggle('active', tab === 'chat');
+        if (navTemplates) navTemplates.classList.toggle('active', tab === 'templates');
+
+        if (tab === 'templates') {
+            loadTemplates().catch(err => console.error('Erro ao carregar templates:', err));
+        }
+    } catch (err) {
+        console.error('Erro no switchTab:', err);
+    }
+};
 
 // ─── Toast ──────────────────────────────────────────────────
 function showToast(message, type) {
@@ -193,11 +203,15 @@ function stopAutoRefresh() {
 
 // ─── Template Functions ─────────────────────────────────────
 async function loadTemplates() {
-    const response = await apiFetch('/api/templates');
-    if (!response) return;
-    const data = await response.json();
-    templates = data.templates || {};
-    renderTemplateList();
+    try {
+        const response = await apiFetch('/api/templates');
+        if (!response) return;
+        const data = await response.json();
+        templates = data.templates || {};
+        renderTemplateList();
+    } catch (err) {
+        console.error('Erro ao carregar templates:', err);
+    }
 }
 
 function renderTemplateList() {
