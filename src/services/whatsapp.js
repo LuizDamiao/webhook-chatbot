@@ -82,18 +82,22 @@ export class WhatsAppService {
         if (type !== 'notify') return;
         for (const msg of messages) {
           if (msg.key.fromMe) continue;
-          const phone = msg.key.remoteJid?.replace('@s.whatsapp.net', '')?.replace('@lid', '');
+          const rawJid = msg.key.remoteJid || '';
+          let phone = msg.key.participant?.replace('@s.whatsapp.net', '')?.replace('@lid', '') ||
+                      rawJid.replace('@s.whatsapp.net', '').replace('@lid', '') || '';
+          const isLid = rawJid.includes('@lid');
+          const jid = isLid ? rawJid : (phone ? `${phone}@s.whatsapp.net` : '');
           const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.buttonsResponseMessage?.selectedButtonId || '';
           if (!phone || !text) continue;
           const stored = messageStore.add({
-            from: phone,
+            from: jid || phone,
             to: 'bot',
             body: text,
             direction: 'incoming',
             status: 'received',
             customerName: msg.pushName || phone
           });
-          logger.info(`[INCOMING] from=${phone}, text=${text.substring(0, 50)}, id=${stored.id}`);
+          logger.info(`[INCOMING] from=${jid || phone}, text=${text.substring(0, 50)}, id=${stored.id}`);
         }
       });
 
@@ -165,21 +169,25 @@ export class WhatsAppService {
       throw new Error('WhatsApp not connected');
     }
 
-    const formattedPhone = formatPhone(phone);
-    const inputJid = `${formattedPhone}@s.whatsapp.net`;
-    let jid = inputJid;
+    let jid;
+    if (phone.includes('@')) {
+      jid = phone;
+    } else {
+      const formattedPhone = formatPhone(phone);
+      jid = `${formattedPhone}@s.whatsapp.net`;
+    }
 
     try {
-      const [exists] = await this.sock.onWhatsApp(inputJid);
+      const [exists] = await this.sock.onWhatsApp(jid);
       if (!exists?.exists) {
-        logger.warn(`Phone ${formattedPhone} does not exist on WhatsApp`);
+        logger.warn(`Phone ${phone} does not exist on WhatsApp`);
         return { success: false, error: 'Phone number not found on WhatsApp' };
       }
-      if (exists.jid && exists.jid !== inputJid) {
-        logger.info(`Canonical JID differs: input=${inputJid} canonical=${exists.jid}`);
+      if (exists.jid && exists.jid !== jid) {
+        logger.info(`Canonical JID differs: input=${jid} canonical=${exists.jid}`);
         jid = exists.jid;
       }
-      logger.info(`Phone ${formattedPhone} verified on WhatsApp, using JID: ${jid}`);
+      logger.info(`Phone ${phone} verified on WhatsApp, using JID: ${jid}`);
     } catch (checkErr) {
       logger.warn('onWhatsApp check failed, proceeding anyway:', checkErr.message);
     }
