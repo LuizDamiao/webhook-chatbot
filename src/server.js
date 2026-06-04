@@ -15,6 +15,7 @@ import { getStats, getLogs, trackMessage } from './utils/tracker.js';
 import { formatPhone } from './services/whatsapp.js';
 import { authLimiter } from './middleware/rateLimiter.js';
 import { messageStore } from './services/messageStore.js';
+import templateRoutes from './routes/templates.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -205,6 +206,9 @@ app.get('/api/contacts', authJWT, (req, res) => {
 
   res.json({ contacts, count: contacts.length });
 });
+
+// Template routes
+app.use('/api/templates', templateRoutes);
 
 // API: Request pairing code (alternative to QR)
 app.post('/api/pairing', async (req, res) => {
