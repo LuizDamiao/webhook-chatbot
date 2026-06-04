@@ -51,6 +51,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Debug: log ALL requests (GET, POST, anything)
+app.all('*', (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/health') return next();
+  console.log(`[${new Date().toISOString()}] ALL ${req.method} ${req.originalUrl} from ${req.ip}`);
+  next();
+});
+
 // API: Server and WhatsApp status
 app.get('/api/status', (req, res) => {
   res.json({
