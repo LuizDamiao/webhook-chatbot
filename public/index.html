@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatBot - WhatsApp</title>
     <link rel="stylesheet" href="css/chat.css">
-    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <div class="chat-app">
@@ -18,13 +17,19 @@
                 </div>
             </div>
             <nav class="header-nav">
-                <button class="nav-btn active" id="navChat" onclick="switchTab('chat')">💬 Chat</button>
-                <button class="nav-btn" id="navTemplates" onclick="switchTab('templates')">📋 Templates</button>
+                <button class="nav-btn active" id="navChat" onclick="switchTab('chat')">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-label">Chat</span>
+                </button>
+                <button class="nav-btn" id="navTemplates" onclick="switchTab('templates')">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Templates</span>
+                </button>
             </nav>
             <button class="btn-logout" id="logoutBtn">Sair</button>
         </header>
 
-        <!-- CHAT VIEW -->
+        <!-- ═══ CHAT VIEW ═══ -->
         <main class="chat-main" id="viewChat">
             <aside class="contacts-sidebar" id="contactsSidebar">
                 <div class="contacts-header">
@@ -60,12 +65,12 @@
             </section>
         </main>
 
-        <!-- TEMPLATES VIEW -->
+        <!-- ═══ TEMPLATES VIEW ═══ -->
         <main class="admin-layout" id="viewTemplates" style="display:none;">
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <div class="sidebar-title">Templates</div>
-                    <button class="btn-new-event" id="btnNewEvent" title="Novo evento">+ Novo</button>
+                    <button class="btn-new-event" id="btnNewEvent">+ Novo</button>
                 </div>
                 <ul class="template-list" id="templateList"></ul>
             </aside>
@@ -73,7 +78,7 @@
             <main class="editor-area" id="editorArea">
                 <div class="editor-placeholder" id="editorPlaceholder">
                     <div class="icon">📝</div>
-                    <p>Selecione um template na barra lateral para editar</p>
+                    <p>Selecione um template para editar</p>
                 </div>
 
                 <div class="editor-panel hidden" id="editorPanel">
@@ -85,9 +90,9 @@
                     <div class="form-section">
                         <h3>✏️ Mensagem</h3>
                         <div class="form-group">
-                            <textarea id="messageInput" rows="5" placeholder="Digite a mensagem do template..."></textarea>
+                            <textarea id="messageInput" rows="5" placeholder="Digite a mensagem..."></textarea>
                             <div class="variables-help">
-                                <div class="title">Variáveis disponíveis</div>
+                                <div class="title">Variáveis</div>
                                 <div class="var-list">
                                     <span class="var-tag">{nome}</span>
                                     <span class="var-tag">{produto}</span>
@@ -111,10 +116,10 @@
                                 <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/>
                             </circle>
                         </svg>
-                        <span class="btn-text">Salvar Alterações</span>
+                        <span class="btn-text">Salvar</span>
                     </button>
 
-                    <button class="btn-delete-event" id="btnDeleteEvent" style="margin-top:12px;">🗑 Excluir Evento</button>
+                    <button class="btn-delete-event hidden" id="btnDeleteEvent">🗑 Excluir Evento</button>
                 </div>
 
                 <div class="categories-section" style="margin-top: 32px;">
@@ -122,11 +127,11 @@
                     <div class="category-form">
                         <input type="text" id="catKey" placeholder="Chave (ex: ebook)">
                         <input type="text" id="catName" placeholder="Nome (ex: E-book)">
-                        <input type="text" id="catKeywords" placeholder="Palavras-chave (separadas por vírgula)">
+                        <input type="text" id="catKeywords" placeholder="Palavras-chave (vírgula)">
                         <button class="btn-add-category" id="addCatBtn">Adicionar</button>
                     </div>
                     <div class="categories-grid" id="categoriesGrid">
-                        <div class="empty-state">Carregando categorias...</div>
+                        <div class="empty-state">Carregando...</div>
                     </div>
                 </div>
             </main>
@@ -137,7 +142,7 @@
                 <span class="status-dot" id="statusDot"></span>
                 <span id="statusText">Verificando status...</span>
             </div>
-            <div style="font-size: 0.75rem; color: #8696a0;">LastLink + WhatsApp Integration</div>
+            <div>LastLink + WhatsApp Integration</div>
         </footer>
     </div>
 
@@ -146,11 +151,11 @@
         <div class="modal">
             <h3>Novo Evento</h3>
             <div class="form-group">
-                <label>Chave do evento (ex: Subscription_Canceled)</label>
+                <label>Chave do evento</label>
                 <input type="text" id="newEventKey" placeholder="Ex: Subscription_Canceled">
             </div>
             <div class="form-group">
-                <label>Nome exibido (ex: Assinatura Cancelada)</label>
+                <label>Nome exibido</label>
                 <input type="text" id="newEventLabel" placeholder="Ex: Assinatura Cancelada">
             </div>
             <div class="form-group">
@@ -159,7 +164,7 @@
             </div>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeNewEventModal()">Cancelar</button>
-                <button class="btn-save" id="btnCreateEvent">Criar Evento</button>
+                <button class="btn-save" id="btnCreateEvent">Criar</button>
             </div>
         </div>
     </div>
