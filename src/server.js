@@ -16,6 +16,7 @@ import { formatPhone } from './services/whatsapp.js';
 import { authLimiter } from './middleware/rateLimiter.js';
 import { messageStore } from './services/messageStore.js';
 import templateRoutes from './routes/templates.js';
+import QRCode from 'qrcode';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -109,13 +110,19 @@ app.get('/api/status', authJWT, (req, res) => {
   });
 });
 
-// API: Get QR code for WhatsApp connection
-app.get('/api/qrcode', authJWT, (req, res) => {
+// API: Get QR code for WhatsApp connection (returns base64 image)
+app.get('/api/qrcode', authJWT, async (req, res) => {
   const qr = whatsappService.getQRCode();
   if (qr) {
-    res.json({ qr });
+    try {
+      const dataUrl = await QRCode.toDataURL(qr, { width: 260, margin: 2, color: { dark: '#1f2c34', light: '#ffffff' } });
+      res.json({ qr: dataUrl });
+    } catch (err) {
+      console.error('QR code generation error:', err);
+      res.json({ qr: null, message: 'Erro ao gerar QR Code' });
+    }
   } else {
-    res.json({ qr: null, message: 'No QR code available. WhatsApp might be connected or not started yet.' });
+    res.json({ qr: null, message: 'Nenhum QR Code disponível. WhatsApp pode estar conectado ou não iniciado.' });
   }
 });
 

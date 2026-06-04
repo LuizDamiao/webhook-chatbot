@@ -1,6 +1,3 @@
-const API_URL = window.API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://webhook-chatbot-v2.onrender.com');
-const BASE_URL = window.BASE_URL || (window.location.hostname === 'localhost' ? '' : '/webhook-chatbot');
-
 let pollInterval = null;
 
 function getToken() {
@@ -11,10 +8,10 @@ async function apiFetch(path, options = {}) {
     const token = getToken();
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+    const response = await fetch(`${window.API_URL}${path}`, { ...options, headers });
     if (response.status === 401) {
         localStorage.removeItem('dashboard_token');
-        window.location.href = BASE_URL + '/login.html';
+        window.location.href = window.BASE_URL + '/login.html';
         return null;
     }
     return response;
@@ -68,28 +65,16 @@ function showError(msg) {
     document.getElementById('waRefreshBtn').classList.remove('hidden');
 }
 
-function renderQR(qrData) {
+function renderQR(qrDataUrl) {
     const container = document.getElementById('qrContainer');
     if (!container) return;
-    if (typeof QRCode === 'undefined') {
-        console.warn('QRCode library not loaded yet, retrying...');
-        setTimeout(() => renderQR(qrData), 500);
-        return;
-    }
     container.innerHTML = '';
-    try {
-        new QRCode(container, {
-            text: qrData,
-            width: 260,
-            height: 260,
-            colorDark: '#1f2c34',
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
-        });
-    } catch (err) {
-        console.error('QR render error:', err);
-        showError('Erro ao gerar QR Code');
-    }
+    const img = document.createElement('img');
+    img.src = qrDataUrl;
+    img.alt = 'QR Code WhatsApp';
+    img.style.width = '260px';
+    img.style.height = '260px';
+    container.appendChild(img);
 }
 
 async function loadQRCode() {
@@ -156,14 +141,14 @@ function updateStatusDot(connected) {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.auth.isAuthenticated()) {
-        window.location.href = BASE_URL + '/login.html';
+        window.location.href = window.BASE_URL + '/login.html';
         return;
     }
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('dashboard_token');
         localStorage.removeItem('dashboard_user');
-        window.location.href = BASE_URL + '/login.html';
+        window.location.href = window.BASE_URL + '/login.html';
     });
 
     document.getElementById('waRefreshBtn').addEventListener('click', loadQRCode);
