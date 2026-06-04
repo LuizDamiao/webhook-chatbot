@@ -1,6 +1,7 @@
 import { formatCartMessage } from '../templates/message.js';
 import { WhatsAppService } from '../services/whatsapp.js';
 import { trackMessage } from '../utils/tracker.js';
+import { messageStore } from '../services/messageStore.js';
 
 const whatsappService = new WhatsAppService(process.env.SESSION_DIR);
 
@@ -54,7 +55,7 @@ function parseLastLinkData(body) {
  * @param {object} req - Express request
  * @param {object} res - Express response
  */
-export async function handleWebhook(req, res) {
+export async function handleWebhook(req, res, data) {
   const { nome, telefone, produto } = parseLastLinkData(req.body);
 
   // Validate required fields
@@ -78,6 +79,16 @@ export async function handleWebhook(req, res) {
     trackMessage(nome, telefone, result.success);
 
     if (result.success) {
+      messageStore.add({
+        from: 'bot',
+        to: telefone,
+        body: message,
+        direction: 'outgoing',
+        status: 'sent',
+        type: 'text',
+        customerName: data?.customerName,
+        products: data?.products
+      });
       res.status(200).json({ success: true });
     } else {
       console.error('WhatsApp send failed:', result.error);

@@ -230,8 +230,9 @@ app.post('/webhook', (req, res, next) => {
   console.log('=== WEBHOOK RECEIVED FROM LASTLINK ===');
   console.log(JSON.stringify(entry, null, 2));
   console.log('======================================');
-  next();
-}, handleWebhook);
+  const parsed = parseLastLinkData(req.body);
+  handleWebhook(req, res, parsed);
+});
 
 // API: Raw webhook log (what LastLink sent)
 app.get('/api/webhook-raw', (req, res) => {
