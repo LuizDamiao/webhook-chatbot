@@ -1,7 +1,5 @@
 // ─── Config ──────────────────────────────────────────────────
-// API_URL and BASE_URL are defined in auth.js and exported via window.*
-const API_URL = window.API_URL;
-const BASE_URL = window.BASE_URL;
+// API_URL and BASE_URL are defined in auth.js (const in global scope)
 
 const EVENT_LABELS = {
     Abandoned_Cart: 'Carrinho Abandonado',
@@ -38,10 +36,10 @@ async function apiFetch(path, options = {}) {
     const token = localStorage.getItem('dashboard_token');
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+    const response = await fetch(`${window.API_URL}${path}`, { ...options, headers });
     if (response.status === 401) {
         localStorage.removeItem('dashboard_token');
-        window.location.href = BASE_URL + '/login.html';
+        window.location.href = window.BASE_URL + '/login.html';
         return null;
     }
     return response;
@@ -397,13 +395,13 @@ async function deleteTemplateAPI(event) {
 
 // ─── Init ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!window.auth.isAuthenticated()) { window.location.href = BASE_URL + '/login.html'; return; }
+    if (!window.auth.isAuthenticated()) { window.location.href = window.BASE_URL + '/login.html'; return; }
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('dashboard_token');
         localStorage.removeItem('dashboard_user');
-        window.location.href = BASE_URL + '/login.html';
+        window.location.href = window.BASE_URL + '/login.html';
     });
 
     // Chat events

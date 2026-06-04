@@ -1,5 +1,4 @@
-const API_URL = window.API_URL;
-const BASE_URL = window.BASE_URL;
+// API_URL and BASE_URL are defined in auth.js (const in global scope)
 
 const EVENT_LABELS = {
   Abandoned_Cart: 'Carrinho Abandonado',
@@ -32,7 +31,7 @@ function getToken() {
 
 function checkAuth() {
   if (!getToken()) {
-    window.location.href = BASE_URL + '/login.html';
+    window.location.href = window.BASE_URL + '/login.html';
     return false;
   }
   return true;
@@ -57,11 +56,11 @@ async function apiFetch(path, options = {}) {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const response = await fetch(`${window.API_URL}${path}`, { ...options, headers });
 
   if (response.status === 401) {
     localStorage.removeItem('dashboard_token');
-    window.location.href = BASE_URL + '/login.html';
+    window.location.href = window.BASE_URL + '/login.html';
     return null;
   }
 
@@ -293,7 +292,7 @@ function init() {
   document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('dashboard_token');
     localStorage.removeItem('dashboard_user');
-    window.location.href = BASE_URL + '/login.html';
+    window.location.href = window.BASE_URL + '/login.html';
   });
 
   document.getElementById('messageInput').addEventListener('input', updatePreview);
