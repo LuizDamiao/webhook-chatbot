@@ -1,6 +1,4 @@
-const API_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:3000'
-  : 'https://webhook-chatbot-v2.onrender.com';
+const API_URL = window.API_URL;
 
 const EVENT_LABELS = {
   Abandoned_Cart: 'Carrinho Abandonado',

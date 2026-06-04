@@ -3,83 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Templates</title>
-    <link rel="stylesheet" href="css/admin.css">
+    <title>Templates - ChatBot</title>
+    <link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
-    <header>
-        <div class="header-left">
-            <a href="/" class="back-link">&#8592;</a>
-            <h1>Gerenciar Templates</h1>
-        </div>
-        <button class="btn-logout" id="logoutBtn">Sair</button>
-    </header>
-
-    <div class="admin-layout">
-        <aside class="sidebar">
-            <div class="sidebar-title">Templates</div>
-            <ul class="template-list" id="templateList">
-            </ul>
-        </aside>
-
-        <main class="editor-area" id="editorArea">
-            <div class="editor-placeholder" id="editorPlaceholder">
-                <div class="icon">&#128221;</div>
-                <p>Selecione um template na barra lateral para editar</p>
+    <div class="chat-app">
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <div class="chat-logo">💬</div>
+                <div>
+                    <div class="chat-title">ChatBot Webhook</div>
+                    <div class="chat-subtitle">LastLink + WhatsApp</div>
+                </div>
             </div>
+            <nav class="header-nav">
+                <a href="/" class="nav-btn">💬 Chat</a>
+                <a href="/admin.html" class="nav-btn active">⚙️ Templates</a>
+            </nav>
+            <button class="btn-logout" id="logoutBtn">Sair</button>
+        </header>
 
-            <div class="editor-panel hidden" id="editorPanel">
-                <div class="editor-header">
-                    <h2 id="editorTitle"></h2>
-                    <span class="event-badge" id="editorEvent"></span>
+        <main class="admin-layout">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-title">Templates</div>
+                    <button class="btn-new-event" id="btnNewEvent">+ Novo</button>
+                </div>
+                <ul class="template-list" id="templateList"></ul>
+            </aside>
+
+            <main class="editor-area">
+                <div class="editor-placeholder" id="editorPlaceholder">
+                    <div class="icon">📝</div>
+                    <p>Selecione um template para editar</p>
                 </div>
 
-                <div class="form-section">
-                    <h3>&#9998; Mensagem</h3>
-                    <div class="form-group">
-                        <textarea id="messageInput" rows="5" placeholder="Digite a mensagem do template..."></textarea>
-                        <div class="variables-help">
-                            <div class="title">Variáveis disponíveis</div>
-                            <div class="var-list">
-                                <span class="var-tag">{nome}</span>
-                                <span class="var-tag">{produto}</span>
-                                <span class="var-tag">{preco}</span>
-                                <span class="var-tag">{email}</span>
-                                <span class="var-tag">{oferta}</span>
+                <div class="editor-panel hidden" id="editorPanel">
+                    <div class="editor-header">
+                        <h2 id="editorTitle"></h2>
+                        <span class="event-badge" id="editorEvent"></span>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>✏️ Mensagem</h3>
+                        <div class="form-group">
+                            <textarea id="messageInput" rows="5" placeholder="Digite a mensagem..."></textarea>
+                            <div class="variables-help">
+                                <div class="title">Variáveis</div>
+                                <div class="var-list">
+                                    <span class="var-tag">{nome}</span>
+                                    <span class="var-tag">{produto}</span>
+                                    <span class="var-tag">{preco}</span>
+                                    <span class="var-tag">{email}</span>
+                                    <span class="var-tag">{oferta}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="preview-section">
+                        <h3>👁 Pré-visualização</h3>
+                        <div class="preview-bubble" id="previewBubble"></div>
+                        <div class="preview-time" id="previewTime"></div>
+                    </div>
+
+                    <button class="btn-save" id="saveBtn">
+                        <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round">
+                                <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/>
+                            </circle>
+                        </svg>
+                        <span class="btn-text">Salvar</span>
+                    </button>
+
+                    <button class="btn-delete-event hidden" id="btnDeleteEvent">🗑 Excluir Evento</button>
                 </div>
 
-                <div class="preview-section">
-                    <h3>&#128065; Pré-visualização</h3>
-                    <div class="preview-bubble" id="previewBubble"></div>
-                    <div class="preview-time" id="previewTime"></div>
+                <div class="categories-section" style="margin-top: 32px;">
+                    <h3>📁 Categorias de Produtos</h3>
+                    <div class="category-form">
+                        <input type="text" id="catKey" placeholder="Chave (ex: ebook)">
+                        <input type="text" id="catName" placeholder="Nome (ex: E-book)">
+                        <input type="text" id="catKeywords" placeholder="Palavras-chave (vírgula)">
+                        <button class="btn-add-category" id="addCatBtn">Adicionar</button>
+                    </div>
+                    <div class="categories-grid" id="categoriesGrid">
+                        <div class="empty-state">Carregando...</div>
+                    </div>
                 </div>
-
-                <button class="btn-save" id="saveBtn">
-                    <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round">
-                            <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/>
-                        </circle>
-                    </svg>
-                    <span class="btn-text">Salvar Alterações</span>
-                </button>
-            </div>
-
-            <div class="categories-section" style="margin-top: 32px;">
-                <h3>&#128193; Categorias de Produtos</h3>
-                <div class="category-form">
-                    <input type="text" id="catKey" placeholder="Chave (ex: ebook)">
-                    <input type="text" id="catName" placeholder="Nome (ex: E-book)">
-                    <input type="text" id="catKeywords" placeholder="Palavras-chave (separadas por vírgula)">
-                    <button class="btn-add-category" id="addCatBtn">Adicionar</button>
-                </div>
-                <div class="categories-grid" id="categoriesGrid">
-                    <div class="empty-state">Carregando categorias...</div>
-                </div>
-            </div>
+            </main>
         </main>
+
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Verificando status...</span>
+            </div>
+            <div>LastLink + WhatsApp Integration</div>
+        </footer>
+    </div>
+
+    <!-- MODAL: Novo Evento -->
+    <div class="modal-overlay hidden" id="newEventModal">
+        <div class="modal">
+            <h3>Novo Evento</h3>
+            <div class="form-group">
+                <label>Chave do evento</label>
+                <input type="text" id="newEventKey" placeholder="Ex: Subscription_Canceled">
+            </div>
+            <div class="form-group">
+                <label>Nome exibido</label>
+                <input type="text" id="newEventLabel" placeholder="Ex: Assinatura Cancelada">
+            </div>
+            <div class="form-group">
+                <label>Mensagem padrão</label>
+                <textarea id="newEventMessage" rows="3" placeholder="Olá {nome}! Sua assinatura foi cancelada."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="document.getElementById('newEventModal').classList.add('hidden')">Cancelar</button>
+                <button class="btn-save" id="btnCreateEvent">Criar</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/auth.js"></script>
