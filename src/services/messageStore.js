@@ -4,15 +4,15 @@ const MAX_MESSAGES = 1000;
 export const messageStore = {
   add(msg) {
     const message = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...msg,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       from: msg.from,
       to: msg.to,
       body: msg.body,
       timestamp: msg.timestamp || new Date().toISOString(),
       direction: msg.direction || 'outgoing',
       status: msg.status || 'sent',
-      type: msg.type || 'text',
-      ...msg
+      type: msg.type || 'text'
     };
 
     messages.push(message);
