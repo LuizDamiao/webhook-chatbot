@@ -1,4 +1,5 @@
 import pino from 'pino';
+import { messageStore } from './messageStore.js';
 
 const logger = pino({ level: 'info' });
 
@@ -73,6 +74,26 @@ export class WhatsAppService {
           this.isConnected = true;
           this.qrCode = null;
           this.pairingCode = null;
+        }
+      });
+
+      this.sock.ev.on('messages.upsert', (event) => {
+        const { messages, type } = event;
+        if (type !== 'notify') return;
+        for (const msg of messages) {
+          if (msg.key.fromMe) continue;
+          const phone = msg.key.remoteJid?.replace('@s.whatsapp.net', '')?.replace('@lid', '');
+          const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.buttonsResponseMessage?.selectedButtonId || '';
+          if (!phone || !text) continue;
+          const stored = messageStore.add({
+            from: phone,
+            to: 'bot',
+            body: text,
+            direction: 'incoming',
+            status: 'received',
+            customerName: msg.pushName || phone
+          });
+          logger.info(`[INCOMING] from=${phone}, text=${text.substring(0, 50)}, id=${stored.id}`);
         }
       });
 
