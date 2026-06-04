@@ -4,9 +4,11 @@ const API_URL = window.location.hostname === 'localhost'
 
 function checkAuth() {
   const token = localStorage.getItem('dashboard_token');
-  if (token) {
+  if (token && window.location.pathname.includes('login.html')) {
     window.location.href = '/';
+    return false;
   }
+  return !!token;
 }
 
 async function login(username, password) {

@@ -206,7 +206,10 @@ function stopAutoRefresh() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!checkAuth()) return;
+    if (!window.auth.isAuthenticated()) {
+        window.location.href = '/login.html';
+        return;
+    }
 
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', logout);

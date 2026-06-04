@@ -118,6 +118,45 @@ app.get('/api/qrcode', authJWT, (req, res) => {
   }
 });
 
+// POST /api/messages - Envia mensagem via WhatsApp
+app.post('/api/messages', authJWT, async (req, res) => {
+  const { to, phone, text, body } = req.body;
+  const recipient = to || phone;
+  const messageText = text || body;
+
+  if (!recipient || !messageText) {
+    return res.status(400).json({ error: 'to (or phone) and text (or body) are required' });
+  }
+
+  if (!whatsappService.isConnected) {
+    return res.status(503).json({ error: 'WhatsApp not connected' });
+  }
+
+  try {
+    const result = await whatsappService.sendMessage(recipient, messageText);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error || 'Failed to send message' });
+    }
+
+    const sentMessage = {
+      from: 'bot',
+      to: recipient,
+      body: messageText,
+      direction: 'outgoing',
+      timestamp: new Date().toISOString(),
+      id: result.key?.id || Date.now().toString()
+    };
+
+    messageStore.add(sentMessage);
+
+    res.status(200).json({ success: true, message: sentMessage });
+  } catch (error) {
+    console.error('POST /api/messages error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/messages - Retorna todas as mensagens
 app.get('/api/messages', authJWT, (req, res) => {
   const messages = messageStore.getAll();
