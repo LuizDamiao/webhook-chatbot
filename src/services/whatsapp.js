@@ -74,6 +74,7 @@ export class WhatsAppService {
           this.isConnected = true;
           this.qrCode = null;
           this.pairingCode = null;
+          this.loadChatHistory().catch(err => logger.error('Failed to load chat history:', err.message));
         }
       });
 
@@ -81,23 +82,25 @@ export class WhatsAppService {
         const { messages, type } = event;
         if (type !== 'notify') return;
         for (const msg of messages) {
-          if (msg.key.fromMe) continue;
+          const fromMe = msg.key.fromMe;
           const rawJid = msg.key.remoteJid || '';
           let phone = msg.key.participant?.replace('@s.whatsapp.net', '')?.replace('@lid', '') ||
                       rawJid.replace('@s.whatsapp.net', '').replace('@lid', '') || '';
-          const isLid = rawJid.includes('@lid');
-          const jid = isLid ? rawJid : (phone ? `${phone}@s.whatsapp.net` : '');
+          const jid = rawJid.includes('@lid') ? rawJid : (phone ? `${phone}@s.whatsapp.net` : '');
           const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.buttonsResponseMessage?.selectedButtonId || '';
           if (!phone || !text) continue;
           const stored = messageStore.add({
-            from: jid || phone,
-            to: 'bot',
+            from: fromMe ? 'bot' : (jid || phone),
+            to: fromMe ? (jid || phone) : 'bot',
             body: text,
-            direction: 'incoming',
+            direction: fromMe ? 'outgoing' : 'incoming',
             status: 'received',
-            customerName: msg.pushName || phone
+            customerName: msg.pushName || phone,
+            timestamp: msg.messageTimestamp ?
+              (typeof msg.messageTimestamp === 'number' ? new Date(msg.messageTimestamp * 1000).toISOString() : msg.messageTimestamp) :
+              undefined
           });
-          logger.info(`[INCOMING] from=${jid || phone}, text=${text.substring(0, 50)}, id=${stored.id}`);
+          logger.info(`[${fromMe ? 'OUTGOING' : 'INCOMING'}] from=${fromMe ? 'bot' : (jid || phone)}, text=${text.substring(0, 50)}, id=${stored.id}`);
         }
       });
 
@@ -156,6 +159,61 @@ export class WhatsAppService {
 
   getPairingCode() {
     return this.pairingCode;
+  }
+
+  /**
+   * Load existing chat history from WhatsApp store after connection
+   */
+  async loadChatHistory() {
+    if (!this.sock) return;
+
+    const store = this.sock.store;
+    if (!store?.chats) {
+      logger.info('No chat store available, skipping history load');
+      return;
+    }
+
+    const chats = store.chats.all();
+    logger.info(`Loading history from ${chats.length} chats`);
+
+    let loaded = 0;
+    for (const chat of chats) {
+      if (chat.id?.includes('@g.us')) continue;
+
+      try {
+        const history = await this.sock.loadMessages(chat.id, 30);
+        if (!history?.messages) continue;
+
+        for (const msg of history.messages) {
+          if (!msg.message) continue;
+          const fromMe = msg.key?.fromMe;
+          const jid = msg.key?.remoteJid || chat.id;
+          const phone = jid.replace('@s.whatsapp.net', '').replace('@lid', '');
+          const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text ||
+                       msg.message?.buttonsResponseMessage?.selectedButtonId || '';
+          if (!text) continue;
+
+          const timestamp = msg.messageTimestamp ?
+            (typeof msg.messageTimestamp === 'number' ? new Date(msg.messageTimestamp * 1000) : new Date(msg.messageTimestamp)) :
+            new Date();
+
+          messageStore.add({
+            from: fromMe ? 'bot' : (jid || phone),
+            to: fromMe ? (jid || phone) : 'bot',
+            body: text,
+            direction: fromMe ? 'outgoing' : 'incoming',
+            status: 'synced',
+            customerName: chat.name || phone,
+            timestamp: timestamp.toISOString()
+          });
+        }
+        loaded++;
+      } catch (err) {
+        logger.warn(`Failed to load history for ${chat.id}:`, err.message);
+      }
+    }
+
+    logger.info(`Chat history loaded from ${loaded}/${chats.length} chats, total messages: ${messageStore.count}`);
   }
 
   /**
