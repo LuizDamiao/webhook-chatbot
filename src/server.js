@@ -180,8 +180,8 @@ app.post('/api/messages/audio', authJWT, async (req, res) => {
   if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
     const buffer = Buffer.from(audio.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
-    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    const result = await whatsappService.sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/ogg; codecs=opus', ptt: true });
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@c.us`;
+    const result = await whatsappService.client.sendFileMessage(jid, buffer, { filename: 'audio', mimetype: 'audio/ogg; codecs=opus', ptt: true });
     const stored = messageStore.add({ from: 'bot', to: phone, body: '[Áudio]', direction: 'outgoing', status: 'sent', type: 'audio', id: result?.key?.id });
     res.json({ success: true, message: stored });
   } catch (error) {
@@ -197,8 +197,8 @@ app.post('/api/messages/document', authJWT, async (req, res) => {
   if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
     const buffer = Buffer.from(file.replace(/^data:[^;]+;base64,/, ''), 'base64');
-    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    const result = await whatsappService.sock.sendMessage(jid, { document: buffer, fileName: fileName || 'arquivo', mimetype: mimeType || 'application/octet-stream' });
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@c.us`;
+    const result = await whatsappService.client.sendFileMessage(jid, buffer, { filename: fileName || 'arquivo', mimetype: mimeType || 'application/octet-stream' });
     const stored = messageStore.add({ from: 'bot', to: phone, body: `[Arquivo: ${fileName || 'arquivo'}]`, direction: 'outgoing', status: 'sent', type: 'document', fileName, id: result?.key?.id });
     res.json({ success: true, message: stored });
   } catch (error) {
@@ -221,9 +221,9 @@ app.post('/api/messages/image', authJWT, async (req, res) => {
       base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     }
     const buffer = Buffer.from(base64Data, 'base64');
-    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@c.us`;
     console.log(`[IMAGE] Sending to ${jid}, size: ${buffer.length} bytes, type: ${mimetype}`);
-    const result = await whatsappService.sock.sendMessage(jid, { image: buffer, caption: caption || '', mimetype });
+    const result = await whatsappService.client.sendFileMessage(jid, buffer, { filename: 'image', mimetype, caption: caption || '' });
     const stored = messageStore.add({ from: 'bot', to: phone, body: caption || '[Imagem]', direction: 'outgoing', status: 'sent', type: 'image', id: result?.key?.id });
     res.json({ success: true, message: stored });
   } catch (error) {
@@ -261,8 +261,8 @@ app.get('/api/contacts', authJWT, (req, res) => {
   // Excluir o próprio número do bot
   let botNumber = '';
   try {
-    const rawId = whatsappService.sock?.user?.id || '';
-    botNumber = rawId.replace(':', '').replace('@s.whatsapp.net', '').replace('@lid', '');
+    const rawId = whatsappService.client?.wid?.user || '';
+    botNumber = rawId.replace(':', '').replace('@c.us', '').replace('@lid', '');
   } catch {}
 
   messages.forEach(msg => {
@@ -270,7 +270,7 @@ app.get('/api/contacts', authJWT, (req, res) => {
     if (!phone || phone === 'bot') return;
 
     // Pular números do próprio bot
-    const cleanPhone = phone.replace('@s.whatsapp.net', '').replace('@lid', '').replace(':', '');
+    const cleanPhone = phone.replace('@c.us', '').replace('@lid', '').replace(':', '');
     if (botNumber && cleanPhone === botNumber) return;
 
     // Tentar normalizar: se o phone é LID, verificar se já existe contato com o mesmo nome
@@ -319,13 +319,10 @@ app.post('/api/messages/read', authJWT, async (req, res) => {
   if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
 
   try {
-    const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+    const jid = phone.includes('@') ? phone : `${phone}@c.us`;
     const unread = messageStore.messages.filter(m => m.from === phone && m.direction === 'incoming' && m.status !== 'read');
     if (unread.length > 0) {
-      const keys = unread.map(m => m.id ? { remoteJid: jid, id: m.id, fromMe: false } : null).filter(Boolean);
-      if (keys.length > 0) {
-        await whatsappService.sock.readMessages(keys);
-      }
+      try { await whatsappService.client.sendSeen(jid); } catch {}
       unread.forEach(m => { m.status = 'read'; });
     }
     res.json({ success: true, marked: unread.length });
@@ -339,34 +336,35 @@ app.post('/api/messages/read', authJWT, async (req, res) => {
 app.post('/api/whatsapp/load-chats', authJWT, async (req, res) => {
   if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
-    const sock = whatsappService.sock;
-    // Try to get chat list from store or query directly
-    let chats = [];
-    if (sock.store?.chats?.all) {
-      chats = sock.store.chats.all();
-    } else {
-      // Fallback: use chatFetch or query
-      try {
-        chats = await sock.chatFetch?.() || [];
-      } catch {}
-    }
-    if (!chats.length) {
-      // Last resort: try to get from Baileys internal
-      try {
-        const result = await sock.query({ tag: 'get', attrs: { type: 'w:p', epoch: 'true' }, content: [{ tag: 'count', attrs: {} }] });
-        // Just return current messageStore contacts as fallback
-        return res.json({ success: true, contacts: messageStore.count, message: 'No chat list available from WhatsApp. Messages will load as they arrive.' });
-      } catch {}
-    }
+    const chats = await whatsappService.client.listChats({ onlyUsers: true, limit: 50 });
     let loaded = 0;
     for (const chat of chats) {
       if (chat.id?.includes('@g.us')) continue;
       try {
-        await whatsappService.loadMessagesFromChat(chat.id, chat.name);
+        const chatId = chat.id;
+        const messages = await whatsappService.client.getMessages(chatId, 50);
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        for (const msg of (messages || [])) {
+          const ts = msg.timestamp ? msg.timestamp * 1000 : 0;
+          if (ts < sevenDaysAgo) continue;
+          const fromMe = msg.fromMe;
+          const phone = chatId.replace('@c.us', '');
+          const text = msg.body || '';
+          if (!text) continue;
+          let quotedText = null;
+          if (msg.quotedMsg?.body) quotedText = msg.quotedMsg.body;
+          messageStore.add({
+            from: fromMe ? 'bot' : phone, to: fromMe ? phone : 'bot',
+            body: text, direction: fromMe ? 'outgoing' : 'incoming', status: 'synced',
+            customerName: chat.name || phone, quotedText,
+            type: msg.isMedia ? 'media' : 'text',
+            timestamp: ts ? new Date(ts).toISOString() : new Date().toISOString()
+          });
+        }
         loaded++;
       } catch {}
     }
-    res.json({ success: true, loaded, total: chats.length });
+    res.json({ success: true, loaded, total: chats.length, messages: messageStore.count });
   } catch (error) {
     console.error('Load chats error:', error);
     res.status(500).json({ error: error.message });
@@ -378,27 +376,24 @@ app.post('/api/whatsapp/load-chat/:phone', authJWT, async (req, res) => {
   if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
   const phone = req.params.phone;
   try {
-    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    const sock = whatsappService.sock;
-    const history = await sock.loadMessages(jid, 50);
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@c.us`;
+    const messages = await whatsappService.client.getMessages(jid, 50);
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     let loaded = 0;
-    for (const msg of (history?.messages || [])) {
-      if (!msg.message) continue;
-      const ts = msg.messageTimestamp ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : 0) : 0;
+    for (const msg of (messages || [])) {
+      const ts = msg.timestamp ? msg.timestamp * 1000 : 0;
       if (ts < sevenDaysAgo) continue;
-      const fromMe = msg.key?.fromMe;
-      const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+      const fromMe = msg.fromMe;
+      const text = msg.body || '';
       if (!text) continue;
       let quotedText = null;
-      const ctx = msg.message?.extendedTextMessage?.contextInfo;
-      if (ctx?.quotedMessage) {
-        quotedText = ctx.quotedMessage.conversation || ctx.quotedMessage.extendedTextMessage?.text || null;
-      }
+      if (msg.quotedMsg?.body) quotedText = msg.quotedMsg.body;
       messageStore.add({
-        from: fromMe ? 'bot' : jid, to: fromMe ? jid : 'bot',
+        from: fromMe ? 'bot' : jid.replace('@c.us', ''), to: fromMe ? jid.replace('@c.us', '') : 'bot',
         body: text, direction: fromMe ? 'outgoing' : 'incoming', status: 'synced',
-        customerName: phone, quotedText, timestamp: new Date(ts).toISOString()
+        customerName: phone, quotedText,
+        type: msg.isMedia ? 'media' : 'text',
+        timestamp: ts ? new Date(ts).toISOString() : new Date().toISOString()
       });
       loaded++;
     }
@@ -490,15 +485,11 @@ app.post('/api/diagnostic', async (req, res) => {
   }
   try {
     const result = await whatsappService.sendMessage(telefone, 'Teste diagnostico');
-    const sock = whatsappService.sock;
-    const phoneInfo = await sock.onWhatsApp(`${formatPhone(telefone)}@s.whatsapp.net`);
     res.json({
       sendResult: result,
-      phoneExists: phoneInfo,
       connectionState: {
         isConnected: whatsappService.isConnected,
-        user: sock.user?.id,
-        platform: sock.user?.platform
+        user: whatsappService.client?.wid?.user || 'unknown'
       }
     });
   } catch (error) {
