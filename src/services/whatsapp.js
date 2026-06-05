@@ -1,6 +1,6 @@
 import pino from 'pino';
 import { messageStore } from './messageStore.js';
-import { existsSync, rmSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 const logger = pino({ level: 'warn' });
@@ -96,7 +96,6 @@ export class WhatsAppService {
           if (statusCode === 405 || statusCode === 401) {
             console.log('[WA] Invalid session, clearing and reconnecting...');
             try {
-              const { readdirSync, unlinkSync } = await import('node:fs');
               const files = readdirSync(this.sessionDir);
               for (const f of files) {
                 if (f === '.baileys-version') continue;
