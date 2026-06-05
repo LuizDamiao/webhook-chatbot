@@ -16,6 +16,7 @@ import { formatPhone } from './services/whatsapp.js';
 import { authLimiter } from './middleware/rateLimiter.js';
 import { messageStore } from './services/messageStore.js';
 import templateRoutes from './routes/templates.js';
+import aiRoutes from './routes/ai.js';
 import QRCode from 'qrcode';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -423,6 +424,9 @@ app.post('/api/whatsapp/load-chat/:phone', authJWT, async (req, res) => {
 
 // Template routes
 app.use('/api/templates', templateRoutes);
+
+// AI routes
+app.use(aiRoutes);
 
 // API: Request pairing code (alternative to QR)
 app.post('/api/pairing', async (req, res) => {
