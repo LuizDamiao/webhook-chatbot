@@ -74,7 +74,18 @@ export class WhatsAppService {
           this.isConnected = true;
           this.qrCode = null;
           this.pairingCode = null;
-          this.loadChatHistory().catch(err => logger.error('Failed to load chat history:', err.message));
+        }
+      });
+
+      this.sock.ev.on('chats.upsert', (chats) => {
+        for (const chat of chats) {
+          if (chat.id?.includes('@g.us')) continue;
+          if (!this._loadedChats) this._loadedChats = new Set();
+          if (this._loadedChats.has(chat.id)) continue;
+          this._loadedChats.add(chat.id);
+          this.loadMessagesFromChat(chat.id, chat.name).catch(err =>
+            logger.warn(`Failed to load chat ${chat.id}:`, err.message)
+          );
         }
       });
 
@@ -169,59 +180,52 @@ export class WhatsAppService {
   }
 
   /**
-   * Load existing chat history from WhatsApp store after connection
+   * Load messages from a specific chat (last 7 days)
    */
-  async loadChatHistory() {
+  async loadMessagesFromChat(chatId, chatName) {
     if (!this.sock) return;
 
-    const store = this.sock.store;
-    if (!store?.chats) {
-      logger.info('No chat store available, skipping history load');
-      return;
-    }
-
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const chats = store.chats.all();
-    logger.info(`Loading history from ${chats.length} chats (last 7 days)`);
 
-    let loaded = 0;
-    for (const chat of chats) {
-      if (chat.id?.includes('@g.us')) continue;
+    try {
+      const history = await this.sock.loadMessages(chatId, 50);
+      if (!history?.messages) return;
 
-      try {
-        const history = await this.sock.loadMessages(chat.id, 50);
-        if (!history?.messages) continue;
+      let loaded = 0;
+      for (const msg of history.messages) {
+        if (!msg.message) continue;
+        const ts = msg.messageTimestamp ?
+          (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : new Date(msg.messageTimestamp).getTime()) : 0;
+        if (ts < sevenDaysAgo) continue;
 
-        for (const msg of history.messages) {
-          if (!msg.message) continue;
-          const ts = msg.messageTimestamp ?
-            (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : new Date(msg.messageTimestamp).getTime()) : 0;
-          if (ts < sevenDaysAgo) continue;
+        const fromMe = msg.key?.fromMe;
+        const phone = chatId.replace('@s.whatsapp.net', '').replace('@lid', '');
+        const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text ||
+                     msg.message?.buttonsResponseMessage?.selectedButtonId || '';
+        if (!text) continue;
 
-          const fromMe = msg.key?.fromMe;
-          const jid = msg.key?.remoteJid || chat.id;
-          const phone = jid.replace('@s.whatsapp.net', '').replace('@lid', '');
-          const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text ||
-                       msg.message?.buttonsResponseMessage?.selectedButtonId || '';
-          if (!text) continue;
-
-          messageStore.add({
-            from: fromMe ? 'bot' : (jid || phone),
-            to: fromMe ? (jid || phone) : 'bot',
-            body: text,
-            direction: fromMe ? 'outgoing' : 'incoming',
-            status: 'synced',
-            customerName: chat.name || phone,
-            timestamp: new Date(ts).toISOString()
-          });
+        let quotedText = null;
+        const ctx = msg.message?.extendedTextMessage?.contextInfo;
+        if (ctx?.quotedMessage) {
+          quotedText = ctx.quotedMessage.conversation || ctx.quotedMessage.extendedTextMessage?.text || null;
         }
-        loaded++;
-      } catch (err) {
-        logger.warn(`Failed to load history for ${chat.id}:`, err.message);
-      }
-    }
 
-    logger.info(`Chat history loaded from ${loaded}/${chats.length} chats, total messages: ${messageStore.count}`);
+        messageStore.add({
+          from: fromMe ? 'bot' : chatId,
+          to: fromMe ? chatId : 'bot',
+          body: text,
+          direction: fromMe ? 'outgoing' : 'incoming',
+          status: 'synced',
+          customerName: chatName || phone,
+          quotedText,
+          timestamp: new Date(ts).toISOString()
+        });
+        loaded++;
+      }
+      logger.info(`[HISTORY] ${chatId} (${chatName || phone}): ${loaded} messages loaded`);
+    } catch (err) {
+      logger.warn(`Failed to load history for ${chatId}:`, err.message);
+    }
   }
 
   /**

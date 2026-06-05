@@ -181,7 +181,7 @@ app.post('/api/messages/audio', authJWT, async (req, res) => {
   try {
     const buffer = Buffer.from(audio.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
     const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    const result = await whatsappService.sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/mpeg', ptt: true });
+    const result = await whatsappService.sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/ogg; codecs=opus', ptt: true });
     const stored = messageStore.add({ from: 'bot', to: phone, body: '[Áudio]', direction: 'outgoing', status: 'sent', type: 'audio', id: result?.key?.id });
     res.json({ success: true, message: stored });
   } catch (error) {
