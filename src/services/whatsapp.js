@@ -1,7 +1,10 @@
 import pino from 'pino';
 import { messageStore } from './messageStore.js';
+import { existsSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const logger = pino({ level: 'warn' });
+const BAILEYS_VERSION = '6.7.16';
 
 export function formatPhone(phone) {
   if (!phone) throw new Error('Invalid phone number');
@@ -22,6 +25,23 @@ export class WhatsAppService {
 
   async connect() {
     try {
+      // Check if session is from a different Baileys version — clear if so
+      const versionFile = join(this.sessionDir, '.baileys-version');
+      try {
+        if (existsSync(versionFile)) {
+          const stored = readFileSync(versionFile, 'utf-8').trim();
+          if (stored !== BAILEYS_VERSION) {
+            logger.info(`Session version mismatch (${stored} vs ${BAILEYS_VERSION}), clearing session`);
+            rmSync(this.sessionDir, { recursive: true, force: true });
+          }
+        } else if (existsSync(join(this.sessionDir, 'creds.json'))) {
+          // Has old session but no version marker — assume old version
+          logger.info('Old session detected (no version marker), clearing');
+          rmSync(this.sessionDir, { recursive: true, force: true });
+        }
+      } catch {}
+      writeFileSync(versionFile, BAILEYS_VERSION, 'utf-8');
+
       const baileys = await import('@whiskeysockets/baileys');
       const { state, saveCreds } = await baileys.useMultiFileAuthState(this.sessionDir);
 
