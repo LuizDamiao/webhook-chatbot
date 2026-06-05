@@ -19,80 +19,138 @@
             <nav class="header-nav">
                 <a href="index.html" class="nav-btn">💬 Chat</a>
                 <a href="whatsapp.html" class="nav-btn">📱 WhatsApp</a>
-                <a href="admin.html" class="nav-btn active">⚙️ Templates</a>
+                <a href="admin.html" class="nav-btn active" data-tab="templates">⚙️ Templates</a>
+                <a href="#" class="nav-btn" data-tab="ai">🤖 AI Agent</a>
             </nav>
             <button class="btn-logout" id="logoutBtn">Sair</button>
         </header>
 
         <main class="admin-layout">
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <div class="sidebar-title">Templates</div>
-                    <button class="btn-new-event" id="btnNewEvent">+ Novo</button>
-                </div>
-                <ul class="template-list" id="templateList"></ul>
-            </aside>
+            <div class="tab-content" id="tab-templates">
+                <aside class="sidebar">
+                    <div class="sidebar-header">
+                        <div class="sidebar-title">Templates</div>
+                        <button class="btn-new-event" id="btnNewEvent">+ Novo</button>
+                    </div>
+                    <ul class="template-list" id="templateList"></ul>
+                </aside>
 
-            <main class="editor-area">
-                <div class="editor-placeholder" id="editorPlaceholder">
-                    <div class="icon">📝</div>
-                    <p>Selecione um template para editar</p>
-                </div>
-
-                <div class="editor-panel hidden" id="editorPanel">
-                    <div class="editor-header">
-                        <h2 id="editorTitle"></h2>
-                        <span class="event-badge" id="editorEvent"></span>
+                <main class="editor-area">
+                    <div class="editor-placeholder" id="editorPlaceholder">
+                        <div class="icon">📝</div>
+                        <p>Selecione um template para editar</p>
                     </div>
 
-                    <div class="form-section">
-                        <h3>✏️ Mensagem</h3>
-                        <div class="form-group">
-                            <textarea id="messageInput" rows="5" placeholder="Digite a mensagem..."></textarea>
-                            <div class="variables-help">
-                                <div class="title">Variáveis</div>
-                                <div class="var-list">
-                                    <span class="var-tag">{nome}</span>
-                                    <span class="var-tag">{produto}</span>
-                                    <span class="var-tag">{preco}</span>
-                                    <span class="var-tag">{email}</span>
-                                    <span class="var-tag">{oferta}</span>
+                    <div class="editor-panel hidden" id="editorPanel">
+                        <div class="editor-header">
+                            <h2 id="editorTitle"></h2>
+                            <span class="event-badge" id="editorEvent"></span>
+                        </div>
+
+                        <div class="form-section">
+                            <h3>✏️ Mensagem</h3>
+                            <div class="form-group">
+                                <textarea id="messageInput" rows="5" placeholder="Digite a mensagem..."></textarea>
+                                <div class="variables-help">
+                                    <div class="title">Variáveis</div>
+                                    <div class="var-list">
+                                        <span class="var-tag">{nome}</span>
+                                        <span class="var-tag">{produto}</span>
+                                        <span class="var-tag">{preco}</span>
+                                        <span class="var-tag">{email}</span>
+                                        <span class="var-tag">{oferta}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="preview-section">
+                            <h3>👁 Pré-visualização</h3>
+                            <div class="preview-bubble" id="previewBubble"></div>
+                            <div class="preview-time" id="previewTime"></div>
+                        </div>
+
+                        <button class="btn-save" id="saveBtn">
+                            <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round">
+                                    <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/>
+                                </circle>
+                            </svg>
+                            <span class="btn-text">Salvar</span>
+                        </button>
+
+                        <button class="btn-delete-event hidden" id="btnDeleteEvent">🗑 Excluir Evento</button>
                     </div>
 
-                    <div class="preview-section">
-                        <h3>👁 Pré-visualização</h3>
-                        <div class="preview-bubble" id="previewBubble"></div>
-                        <div class="preview-time" id="previewTime"></div>
+                    <div class="categories-section" style="margin-top: 32px;">
+                        <h3>📁 Categorias de Produtos</h3>
+                        <div class="category-form">
+                            <input type="text" id="catKey" placeholder="Chave (ex: ebook)">
+                            <input type="text" id="catName" placeholder="Nome (ex: E-book)">
+                            <input type="text" id="catKeywords" placeholder="Palavras-chave (vírgula)">
+                            <button class="btn-add-category" id="addCatBtn">Adicionar</button>
+                        </div>
+                        <div class="categories-grid" id="categoriesGrid">
+                            <div class="empty-state">Carregando...</div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <div class="tab-content" id="tab-ai" style="display:none">
+                <div class="admin-section">
+                    <h2>🤖 AI Agent</h2>
+                    
+                    <!-- Toggle -->
+                    <div class="config-row">
+                        <label>Agente IA:</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aiEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span id="aiStatus">Desligado</span>
                     </div>
 
-                    <button class="btn-save" id="saveBtn">
-                        <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round">
-                                <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="1s" repeatCount="indefinite"/>
-                            </circle>
-                        </svg>
-                        <span class="btn-text">Salvar</span>
-                    </button>
+                    <!-- System Prompt -->
+                    <div class="config-row">
+                        <label>System Prompt:</label>
+                        <textarea id="aiSystemPrompt" rows="6" placeholder="Prompt do agente..."></textarea>
+                        <button class="btn-save" id="saveAiPrompt">Salvar Prompt</button>
+                    </div>
 
-                    <button class="btn-delete-event hidden" id="btnDeleteEvent">🗑 Excluir Evento</button>
+                    <!-- Knowledge Base -->
+                    <h3>📚 Base de Conhecimento</h3>
+                    <div class="knowledge-form">
+                        <select id="knowledgeCategory">
+                            <option value="produto">Produto</option>
+                            <option value="beneficios">Benefícios</option>
+                            <option value="preco">Preço</option>
+                            <option value="exercicios">Exercícios</option>
+                            <option value="comunidade">Comunidade</option>
+                            <option value="faq">FAQ</option>
+                            <option value="geral">Geral</option>
+                        </select>
+                        <select id="knowledgePhase">
+                            <option value="general">Geral</option>
+                            <option value="attention">Atenção (A)</option>
+                            <option value="interest">Interesse (I)</option>
+                            <option value="desire">Desejo (D)</option>
+                            <option value="action">Ação (A)</option>
+                        </select>
+                        <textarea id="knowledgeContent" rows="3" placeholder="Conteúdo do conhecimento..."></textarea>
+                        <button class="btn-save" id="addKnowledge">Adicionar</button>
+                    </div>
+                    <div id="knowledgeList"></div>
+
+                    <!-- Notifications -->
+                    <h3>🔔 Notificações</h3>
+                    <div id="aiNotifications"></div>
+
+                    <!-- Flow Rules -->
+                    <h3>📋 Regras de Fluxo AIDA</h3>
+                    <div id="aiRules"></div>
                 </div>
-
-                <div class="categories-section" style="margin-top: 32px;">
-                    <h3>📁 Categorias de Produtos</h3>
-                    <div class="category-form">
-                        <input type="text" id="catKey" placeholder="Chave (ex: ebook)">
-                        <input type="text" id="catName" placeholder="Nome (ex: E-book)">
-                        <input type="text" id="catKeywords" placeholder="Palavras-chave (vírgula)">
-                        <button class="btn-add-category" id="addCatBtn">Adicionar</button>
-                    </div>
-                    <div class="categories-grid" id="categoriesGrid">
-                        <div class="empty-state">Carregando...</div>
-                    </div>
-                </div>
-            </main>
+            </div>
         </main>
 
         <footer class="status-bar">

@@ -286,6 +286,128 @@ async function deleteEvent() {
   showToast('Evento excluído', 'success');
 }
 
+// AI Agent functions
+async function loadAiConfig() {
+  const response = await apiFetch('/api/ai/config');
+  const data = await response.json();
+  document.getElementById('aiEnabled').checked = data.config?.enabled === 'true';
+  document.getElementById('aiSystemPrompt').value = data.config?.system_prompt || '';
+  document.getElementById('aiStatus').textContent = data.config?.enabled === 'true' ? 'Ligado' : 'Desligado';
+}
+
+async function toggleAiAgent() {
+  const enabled = document.getElementById('aiEnabled').checked;
+  await apiFetch('/api/ai/toggle', {
+    method: 'POST',
+    body: JSON.stringify({ enabled })
+  });
+  document.getElementById('aiStatus').textContent = enabled ? 'Ligado' : 'Desligado';
+}
+
+async function saveAiPrompt() {
+  const prompt = document.getElementById('aiSystemPrompt').value;
+  await apiFetch('/api/ai/config', {
+    method: 'PUT',
+    body: JSON.stringify({ key: 'system_prompt', value: prompt })
+  });
+  alert('Prompt salvo!');
+}
+
+async function addKnowledge() {
+  const category = document.getElementById('knowledgeCategory').value;
+  const aida_phase = document.getElementById('knowledgePhase').value;
+  const content = document.getElementById('knowledgeContent').value;
+  if (!content.trim()) return alert('Conteúdo é obrigatório');
+  
+  await apiFetch('/api/ai/knowledge', {
+    method: 'POST',
+    body: JSON.stringify({ category, aida_phase, content })
+  });
+  document.getElementById('knowledgeContent').value = '';
+  loadKnowledge();
+}
+
+async function loadKnowledge() {
+  const response = await apiFetch('/api/ai/knowledge');
+  const data = await response.json();
+  const list = document.getElementById('knowledgeList');
+  list.innerHTML = data.chunks?.map(chunk => `
+    <div class="knowledge-item">
+      <span class="knowledge-badge">${chunk.category}</span>
+      <span class="knowledge-badge">${chunk.aida_phase}</span>
+      <p>${chunk.content}</p>
+      <button class="btn-delete" onclick="deleteKnowledge(${chunk.id})">🗑️</button>
+    </div>
+  `).join('') || '<p>Nenhum conhecimento cadastrado</p>';
+}
+
+async function deleteKnowledge(id) {
+  if (!confirm('Deletar este conhecimento?')) return;
+  await apiFetch(`/api/ai/knowledge/${id}`, { method: 'DELETE' });
+  loadKnowledge();
+}
+
+async function loadAiNotifications() {
+  const response = await apiFetch('/api/ai/notifications');
+  const data = await response.json();
+  const list = document.getElementById('aiNotifications');
+  list.innerHTML = data.notifications?.map(n => `
+    <div class="notification-item">
+      <span>${n.phone}</span>
+      <p>${n.message}</p>
+      <small>${n.reason}</small>
+      <button class="btn-save" onclick="resolveNotification(${n.id})">✓ Resolver</button>
+    </div>
+  `).join('') || '<p>Nenhuma notificação pendente</p>';
+}
+
+async function resolveNotification(id) {
+  await apiFetch(`/api/ai/notifications/${id}/resolve`, { method: 'PUT' });
+  loadAiNotifications();
+}
+
+async function loadAiRules() {
+  const response = await apiFetch('/api/ai/rules');
+  const data = await response.json();
+  const list = document.getElementById('aiRules');
+  list.innerHTML = data.rules?.map(rule => `
+    <div class="rule-item">
+      <span class="knowledge-badge">${rule.phase}</span>
+      <p>Triggers: ${rule.trigger_keywords}</p>
+      <p>Persuasão: ${rule.persuasion_techniques}</p>
+    </div>
+  `).join('') || '<p>Nenhuma regra configurada</p>';
+}
+
+// Tab switching
+let currentTab = 'templates';
+
+function switchTab(tab) {
+  if (tab === currentTab) return;
+  
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.style.display = 'none';
+  });
+  
+  const targetTab = document.getElementById(`tab-${tab}`);
+  if (targetTab) {
+    targetTab.style.display = tab === 'templates' ? '' : 'block';
+  }
+  
+  currentTab = tab;
+  
+  if (tab === 'ai') {
+    loadAiConfig();
+    loadKnowledge();
+    loadAiNotifications();
+    loadAiRules();
+  }
+}
+
 function init() {
   if (!checkAuth()) return;
 
@@ -305,6 +427,19 @@ function init() {
   document.getElementById('newEventModal').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeNewEventModal();
   });
+
+  // Tab switching
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab(btn.dataset.tab);
+    });
+  });
+
+  // AI Agent event listeners
+  document.getElementById('aiEnabled')?.addEventListener('change', toggleAiAgent);
+  document.getElementById('saveAiPrompt')?.addEventListener('click', saveAiPrompt);
+  document.getElementById('addKnowledge')?.addEventListener('click', addKnowledge);
 
   loadTemplates();
   loadCategories();
