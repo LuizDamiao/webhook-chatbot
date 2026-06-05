@@ -3,6 +3,7 @@ const RETRY_DELAY_MS = 1000;
 const EMBEDDING_DIMENSIONS = 768;
 const BYTES_PER_FLOAT = 4;
 const FETCH_TIMEOUT_MS = 30000;
+const RATE_LIMIT_STATUS = 429;
 
 export function cosineSimilarity(a, b) {
   let dotProduct = 0;
@@ -56,10 +57,10 @@ export async function generateEmbedding(text) {
 
   let response = await fetchEmbedding(text, apiKey);
 
-  if (response.status === 429) {
+  if (response.status === RATE_LIMIT_STATUS) {
     await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
     response = await fetchEmbedding(text, apiKey);
-    if (response.status === 429) {
+    if (response.status === RATE_LIMIT_STATUS) {
       throw new Error('Rate limit exceeded');
     }
   }
