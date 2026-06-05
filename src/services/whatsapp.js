@@ -23,7 +23,8 @@ export class WhatsAppService {
 
   async connect() {
     try {
-      const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = await import('@whiskeysockets/baileys');
+      const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, delay } = await import('@whiskeysockets/baileys');
+      this._delay = delay;
       const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
 
       this.sock = makeWASocket({
@@ -61,6 +62,8 @@ export class WhatsAppService {
           this.qrCode = null;
           this.pairingCode = null;
           this._loadedChats.clear();
+          // Auto-load history after connection stabilizes
+          setTimeout(() => this._autoLoadHistory(), 5000);
         }
       });
 
@@ -171,6 +174,57 @@ export class WhatsAppService {
         undefined
     });
     logger.info(`[${fromMe ? 'OUT' : 'IN'}] ${jid || phone}: ${text.substring(0, 50)} [${type}]`);
+  }
+
+  async _autoLoadHistory() {
+    if (!this.sock || !this.isConnected) return;
+    logger.info('[AUTO-LOAD] Starting automatic chat history load...');
+
+    try {
+      // Wait for chats to sync from WhatsApp server
+      const delay = this._delay || ((ms) => new Promise(r => setTimeout(r, ms)));
+      await delay(3000);
+
+      // Try to get chats from store
+      let chats = [];
+      if (this.sock.store?.chats?.all) {
+        chats = this.sock.store.chats.all();
+        logger.info(`[AUTO-LOAD] Found ${chats.length} chats in store`);
+      }
+
+      if (chats.length === 0) {
+        // Fallback: try using internal query to fetch chats
+        try {
+          const result = await this.sock.query({
+            tag: 'get',
+            attrs: { type: 'w:p', epoch: 'true' },
+            content: [{ tag: 'count', attrs: {} }]
+          });
+          logger.info('[AUTO-LOAD] Query result:', JSON.stringify(result)?.substring(0, 200));
+        } catch (qErr) {
+          logger.warn('[AUTO-LOAD] Query failed:', qErr.message);
+        }
+      }
+
+      // Load messages for each chat
+      let loaded = 0;
+      for (const chat of chats) {
+        if (chat.id?.includes('@g.us')) continue;
+        if (this._loadedChats.has(chat.id)) continue;
+        this._loadedChats.add(chat.id);
+        try {
+          await this.loadMessagesFromChat(chat.id, chat.name);
+          loaded++;
+          await delay(500); // Small delay between chats
+        } catch (err) {
+          logger.warn(`[AUTO-LOAD] Failed to load ${chat.id}:`, err.message);
+        }
+      }
+
+      logger.info(`[AUTO-LOAD] Completed: ${loaded} chats loaded, total messages: ${messageStore.count}`);
+    } catch (err) {
+      logger.error('[AUTO-LOAD] Error:', err.message);
+    }
   }
 
   getQRCode() { return this.qrCode; }
