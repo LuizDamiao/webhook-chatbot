@@ -1,4 +1,6 @@
 import { messageStore } from './messageStore.js';
+import path from 'path';
+import fs from 'fs';
 
 export function formatPhone(phone) {
   if (!phone) throw new Error('Invalid phone number');
@@ -15,19 +17,28 @@ export class WhatsAppService {
     this.qrCode = null;
     this.pairingCode = null;
     this._loadedChats = new Set();
+    this._started = false;
   }
 
   async connect() {
+    if (this._started) return;
+    this._started = true;
+
     try {
       console.log('[WA] Starting WPPConnect...');
       const WPP = await import('@wppconnect-team/wppconnect');
 
+      const browserPath = this._findChromium();
+      if (browserPath) console.log(`[WA] Chromium found at: ${browserPath}`);
+
       this.client = await WPP.default.create({
-        session: this.sessionDir,
+        session: 'chatbot',
+        sessionDataPath: this.sessionDir,
         authTimeout: 0,
         qrTimeout: 0,
         puppeteerOptions: {
           headless: true,
+          executablePath: browserPath || undefined,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -44,7 +55,7 @@ export class WhatsAppService {
       console.log('[WA] WPPConnect client created, waiting for QR...');
 
       this.client.onQR(async (qr) => {
-        console.log('[WA] QR Code received');
+        console.log('[WA] QR Code received, type:', typeof qr, 'length:', qr?.length);
         this.qrCode = qr;
       });
 
@@ -60,6 +71,7 @@ export class WhatsAppService {
         console.log('[WA] WhatsApp disconnected');
         this.isConnected = false;
         this.qrCode = null;
+        this._started = false;
       });
 
       this.client.onMessage(async (message) => {
@@ -102,8 +114,27 @@ export class WhatsAppService {
 
     } catch (error) {
       console.error('[WA] Failed to initialize:', error.message);
+      this._started = false;
       throw error;
     }
+  }
+
+  _findChromium() {
+    const paths = [
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/snap/bin/chromium',
+      process.env.CHROME_BIN
+    ].filter(Boolean);
+
+    for (const p of paths) {
+      try {
+        if (fs.existsSync(p)) return p;
+      } catch {}
+    }
+    return null;
   }
 
   async _loadHistory() {

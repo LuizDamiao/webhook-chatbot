@@ -115,7 +115,12 @@ app.get('/api/qrcode', authJWT, async (req, res) => {
   const qr = whatsappService.getQRCode();
   if (qr) {
     try {
-      const dataUrl = await QRCode.toDataURL(qr, { width: 260, margin: 2, color: { dark: '#1f2c34', light: '#ffffff' } });
+      let dataUrl;
+      if (qr.startsWith('data:image')) {
+        dataUrl = qr;
+      } else {
+        dataUrl = await QRCode.toDataURL(qr, { width: 260, margin: 2, color: { dark: '#1f2c34', light: '#ffffff' } });
+      }
       res.json({ qr: dataUrl });
     } catch (err) {
       console.error('QR code generation error:', err);
