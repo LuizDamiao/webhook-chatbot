@@ -207,8 +207,34 @@ export class WhatsAppService {
         timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000).toISOString() : new Date().toISOString()
       });
       console.log(`[${fromMe ? 'OUT' : 'IN'}] ${phone}: ${text.substring(0, 50)}`);
+
+      if (!fromMe) {
+        this._handleAIResponse(phone, text);
+      }
     } catch (err) {
       console.error('[WA] Message error:', err.message);
+    }
+  }
+
+  async _handleAIResponse(phone, message) {
+    try {
+      const { processMessage, isEnabled } = await import('./aiAgent.js');
+
+      if (!isEnabled()) return;
+
+      console.log(`[AI] Processing message from ${phone}...`);
+      const result = await processMessage(phone, message);
+
+      if (result && result.response) {
+        await this.sock.sendMessage(`${phone}@s.whatsapp.net`, { text: result.response });
+        console.log(`[AI] Sent response to ${phone} (phase: ${result.phase}, confidence: ${result.confidence})`);
+
+        if (result.needsHuman) {
+          console.log(`[AI] ⚠️ Needs human attention for ${phone}`);
+        }
+      }
+    } catch (error) {
+      console.error('[AI] Error processing message:', error.message);
     }
   }
 
