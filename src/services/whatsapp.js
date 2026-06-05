@@ -74,6 +74,7 @@ export class WhatsAppService {
           console.log('[WA] WhatsApp connected');
           this.isConnected = true;
           this.qrCode = null;
+          setTimeout(() => this._loadAllHistory(), 3000);
         }
 
         if (connection === 'close') {
@@ -100,7 +101,6 @@ export class WhatsAppService {
       this.sock.ev.on('messages.upsert', (m) => {
         if (m.type !== 'notify') return;
         for (const msg of m.messages) {
-          if (msg.key.fromMe) continue;
           this._processMessage(msg);
         }
       });
@@ -173,6 +173,8 @@ export class WhatsAppService {
       if (isGroup) return;
 
       const phone = chatId.replace('@c.us', '').replace('@s.whatsapp.net', '');
+      const fromMe = msg.key.fromMe;
+
       const text = msg.message?.conversation
         || msg.message?.extendedTextMessage?.text
         || msg.message?.buttonsResponseMessage?.selectedButtonId
@@ -194,19 +196,85 @@ export class WhatsAppService {
       else if (msg.message?.documentMessage) type = 'document';
 
       messageStore.add({
-        from: phone,
-        to: 'bot',
+        from: fromMe ? 'bot' : phone,
+        to: fromMe ? phone : 'bot',
         body: text,
-        direction: 'incoming',
-        status: 'received',
+        direction: fromMe ? 'outgoing' : 'incoming',
+        status: fromMe ? 'sent' : 'received',
         customerName: msg.pushName || phone,
         quotedText,
         type,
         timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000).toISOString() : new Date().toISOString()
       });
-      console.log(`[IN] ${phone}: ${text.substring(0, 50)}`);
+      console.log(`[${fromMe ? 'OUT' : 'IN'}] ${phone}: ${text.substring(0, 50)}`);
     } catch (err) {
       console.error('[WA] Message error:', err.message);
+    }
+  }
+
+  async _loadAllHistory() {
+    if (!this.sock || !this.isConnected) return;
+    console.log('[HISTORY] Loading all chat history...');
+
+    try {
+      const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+      let totalMessages = 0;
+
+      const phoneMap = new Map();
+      messageStore.messages.forEach(m => {
+        const p = m.direction === 'incoming' ? m.from : m.to;
+        if (p && p !== 'bot' && !phoneMap.has(p)) phoneMap.set(p, m.customerName || p);
+      });
+
+      console.log(`[HISTORY] Loading history for ${phoneMap.size} contacts...`);
+
+      for (const [phone, name] of phoneMap) {
+        try {
+          const jid = `${phone}@s.whatsapp.net`;
+          const result = await this.sock.loadMessages(jid, 50);
+          const msgs = result?.messages || [];
+          let count = 0;
+
+          for (const m of msgs) {
+            const ts = m.messageTimestamp;
+            if (!ts || ts < sevenDaysAgo) continue;
+
+            const fromMe = m.key?.fromMe;
+            const text = m.message?.conversation
+              || m.message?.extendedTextMessage?.text
+              || m.message?.buttonsResponseMessage?.selectedButtonId
+              || m.message?.listResponseMessage?.singleSelectReply?.selectedRowId
+              || '';
+            if (!text) continue;
+
+            let quotedText = null;
+            const ctx = m.message?.extendedTextMessage?.contextInfo;
+            if (ctx?.quotedMessage) {
+              quotedText = ctx.quotedMessage.conversation || ctx.quotedMessage.extendedTextMessage?.text || null;
+            }
+
+            messageStore.add({
+              from: fromMe ? 'bot' : phone,
+              to: fromMe ? phone : 'bot',
+              body: text,
+              direction: fromMe ? 'outgoing' : 'incoming',
+              status: 'synced',
+              customerName: name,
+              quotedText,
+              timestamp: new Date(ts * 1000).toISOString()
+            });
+            count++;
+          }
+          totalMessages += count;
+          console.log(`[HISTORY] ${phone}: ${count} messages loaded`);
+        } catch (err) {
+          console.warn(`[HISTORY] Failed ${phone}:`, err.message);
+        }
+      }
+
+      console.log(`[HISTORY] Done. Total: ${totalMessages} messages from ${phoneMap.size} contacts`);
+    } catch (err) {
+      console.error('[HISTORY] Error:', err.message);
     }
   }
 
