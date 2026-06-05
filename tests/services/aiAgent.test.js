@@ -119,9 +119,10 @@ describe('AiAgent', () => {
       expect(notifications.length).toBe(1);
     });
 
-    it('should throw when GEMINI_API_KEY not set', async () => {
+    it('should return null when GEMINI_API_KEY not set', async () => {
       delete process.env.GEMINI_API_KEY;
-      await expect(processMessage('5511999999999', 'Olá')).rejects.toThrow();
+      const result = await processMessage('5511999999999', 'Olá');
+      expect(result).toBeNull();
     });
 
     it('should store AI response in messageStore', async () => {

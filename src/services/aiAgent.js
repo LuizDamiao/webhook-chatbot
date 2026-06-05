@@ -5,6 +5,12 @@ import { flowEngine } from './flowEngine.js';
 import { searchChunks } from './knowledge.js';
 import { messageStore } from './messageStore.js';
 
+const API_TIMEOUT = 30000;
+const TOP_K_CHUNKS = 3;
+const MAX_HISTORY_MESSAGES = 10;
+const MAX_SUGGESTIONS = 2;
+const DEFAULT_CONFIDENCE = 0.8;
+
 const DB_DIR = fs.existsSync('/data') ? '/data' : path.join(process.cwd(), 'data');
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
@@ -108,14 +114,17 @@ async function callGemini(prompt) {
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
@@ -157,60 +166,78 @@ function checkNeedsHuman(response) {
 }
 
 export async function processMessage(phone, message) {
+  if (typeof phone !== 'string' || phone.trim().length === 0) {
+    console.error('Invalid phone:', phone);
+    return null;
+  }
+  if (typeof message !== 'string' || message.trim().length === 0) {
+    console.error('Invalid message:', message);
+    return null;
+  }
+
   if (!isEnabled()) return null;
 
-  let state = flowEngine.getConversationState(phone);
+  try {
+    let state = flowEngine.getConversationState(phone);
 
-  const newPhase = flowEngine.identifyPhase(message, state);
-  if (newPhase !== state.phase) {
-    flowEngine.advancePhase(phone, newPhase);
-    state = flowEngine.getConversationState(phone);
+    const newPhase = flowEngine.identifyPhase(message, state);
+    if (newPhase !== state.phase) {
+      flowEngine.advancePhase(phone, newPhase);
+      state = flowEngine.getConversationState(phone);
+    }
+
+    const relevantChunks = await searchChunks(message, TOP_K_CHUNKS);
+
+    const usedTechniques = state.persuasionUsed || [];
+    const suggestions = flowEngine.getPersuasionSuggestions(newPhase, usedTechniques);
+
+    const systemPrompt = getConfig('system_prompt') || DEFAULT_SYSTEM_PROMPT;
+    const knowledgeContext = relevantChunks.map(c => c.content).join('\n\n');
+
+    const prompt = buildPrompt({
+      systemPrompt,
+      knowledgeContext,
+      phase: newPhase,
+      persuasionSuggestions: suggestions.slice(0, MAX_SUGGESTIONS),
+      message,
+      history: await getRecentHistory(phone, MAX_HISTORY_MESSAGES)
+    });
+
+    const geminiResponse = await callGemini(prompt);
+
+    const needsHuman = checkNeedsHuman(geminiResponse);
+    if (needsHuman) {
+      createNotification(phone, message, 'AI could not handle this message');
+    }
+
+    if (suggestions.length > 0) {
+      flowEngine.trackPersuasion(phone, suggestions[0].name || suggestions[0]);
+    }
+
+    const confidence = relevantChunks.length > 0
+      ? Math.min(DEFAULT_CONFIDENCE + (relevantChunks.length * 0.05), 0.95)
+      : DEFAULT_CONFIDENCE;
+
+    messageStore.add({
+      from: 'bot',
+      to: phone,
+      body: geminiResponse,
+      direction: 'outgoing',
+      status: 'sent',
+      type: 'text',
+      customerName: 'AI'
+    });
+
+    return {
+      response: geminiResponse,
+      phase: newPhase,
+      confidence,
+      needsHuman
+    };
+  } catch (error) {
+    console.error(`aiAgent.processMessage failed for ${phone}:`, error);
+    return null;
   }
-
-  const relevantChunks = await searchChunks(message, 3);
-
-  const usedTechniques = state.persuasionUsed || [];
-  const suggestions = flowEngine.getPersuasionSuggestions(newPhase, usedTechniques);
-
-  const systemPrompt = getConfig('system_prompt') || DEFAULT_SYSTEM_PROMPT;
-  const knowledgeContext = relevantChunks.map(c => c.content).join('\n\n');
-
-  const prompt = buildPrompt({
-    systemPrompt,
-    knowledgeContext,
-    phase: newPhase,
-    persuasionSuggestions: suggestions.slice(0, 2),
-    message,
-    history: await getRecentHistory(phone, 10)
-  });
-
-  const geminiResponse = await callGemini(prompt);
-
-  const needsHuman = checkNeedsHuman(geminiResponse);
-  if (needsHuman) {
-    createNotification(phone, message, 'AI could not handle this message');
-  }
-
-  if (suggestions.length > 0) {
-    flowEngine.trackPersuasion(phone, suggestions[0].name || suggestions[0]);
-  }
-
-  messageStore.add({
-    from: 'bot',
-    to: phone,
-    body: geminiResponse,
-    direction: 'outgoing',
-    status: 'sent',
-    type: 'text',
-    customerName: `AI → ${phone}`
-  });
-
-  return {
-    response: geminiResponse,
-    phase: newPhase,
-    confidence: 0.8,
-    needsHuman
-  };
 }
 
 export function reset() {
