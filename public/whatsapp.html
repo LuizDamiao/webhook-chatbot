@@ -69,9 +69,14 @@
                         </div>
                     </div>
                     <p class="wa-connected-hint">As mensagens do webhook serão enviadas automaticamente via WhatsApp.</p>
-                    <button class="btn-save wa-refresh-btn" id="waRefreshStatus">
-                        <span class="btn-text">🔄 Atualizar Status</span>
-                    </button>
+                    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                        <button class="btn-save wa-refresh-btn" id="waRefreshStatus">
+                            <span class="btn-text">🔄 Atualizar Status</span>
+                        </button>
+                        <button class="btn-save wa-refresh-btn" id="waResetBtn" style="background:#e74c3c;">
+                            <span class="btn-text">🗑️ Reset Sessão</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>

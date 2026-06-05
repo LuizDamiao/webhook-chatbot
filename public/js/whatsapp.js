@@ -154,6 +154,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('waRefreshBtn').addEventListener('click', loadQRCode);
     document.getElementById('waRefreshStatus').addEventListener('click', loadQRCode);
     document.getElementById('waRetryBtn').addEventListener('click', loadQRCode);
+    document.getElementById('waResetBtn').addEventListener('click', async () => {
+        if (!confirm('Isso vai limpar a sessão WhatsApp e reconectar. Continuar?')) return;
+        try {
+            const token = getToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            await fetch(`${window.API_URL}/api/whatsapp/reset`, { method: 'POST', headers });
+            showDisconnected();
+            showError('Sessão resetada. Aguardando reconexão...');
+            setTimeout(loadQRCode, 5000);
+        } catch (e) {
+            showError('Erro ao resetar sessão');
+        }
+    });
 
     loadQRCode();
 });

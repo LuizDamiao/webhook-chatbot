@@ -1,6 +1,16 @@
 import { messageStore } from './messageStore.js';
+import {
+  DisconnectReason,
+  useMultiFileAuthState,
+  makeCacheableSignalKeyStore,
+  makeWASocket,
+  fetchLatestBaileysVersion
+} from '@whiskeysockets/baileys';
 import path from 'path';
 import fs from 'fs';
+import pino from 'pino';
+
+const logger = pino({ level: 'silent' });
 
 export function formatPhone(phone) {
   if (!phone) throw new Error('Invalid phone number');
@@ -12,11 +22,10 @@ export function formatPhone(phone) {
 export class WhatsAppService {
   constructor(sessionDir) {
     this.sessionDir = sessionDir || './auth_info';
-    this.client = null;
+    this.sock = null;
     this.isConnected = false;
     this.qrCode = null;
     this.pairingCode = null;
-    this._loadedChats = new Set();
     this._started = false;
   }
 
@@ -25,90 +34,84 @@ export class WhatsAppService {
     this._started = true;
 
     try {
-      console.log('[WA] Starting WPPConnect...');
-      const WPP = await import('@wppconnect-team/wppconnect');
+      console.log('[WA] Starting Baileys...');
 
-      const browserPath = this._findChromium();
-      if (browserPath) console.log(`[WA] Chromium found at: ${browserPath}`);
+      if (!fs.existsSync(this.sessionDir)) {
+        fs.mkdirSync(this.sessionDir, { recursive: true });
+      }
 
-      this.client = await WPP.default.create({
-        session: 'chatbot',
-        sessionDataPath: this.sessionDir,
-        authTimeout: 0,
-        qrTimeout: 0,
-        puppeteerOptions: {
-          headless: true,
-          executablePath: browserPath || undefined,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
-          ]
+      this._cleanWPPConnectFiles();
+
+      const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
+      const { version } = await fetchLatestBaileysVersion();
+      console.log(`[WA] Baileys version: ${version.join('.')}`);
+
+      this.sock = makeWASocket({
+        version,
+        logger,
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(state.keys, logger),
+        },
+        printQRInTerminal: false,
+        browser: ['ChatBot Webhook', 'Chrome', '4.0.0'],
+        markOnlineOnConnect: false,
+        generateHighQualityLinkPreview: false,
+        syncFullHistory: false,
+      });
+
+      this.sock.ev.on('creds.update', saveCreds);
+
+      this.sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          console.log('[WA] QR Code received');
+          this.qrCode = qr;
+        }
+
+        if (connection === 'open') {
+          console.log('[WA] WhatsApp connected');
+          this.isConnected = true;
+          this.qrCode = null;
+        }
+
+        if (connection === 'close') {
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          console.log(`[WA] Connection closed: ${statusCode}`);
+
+          this.isConnected = false;
+          this._started = false;
+
+          if (statusCode === DisconnectReason.loggedOut) {
+            console.log('[WA] Session logged out, clearing files...');
+            this._clearSession();
+          } else if (statusCode === 405 || statusCode === 401 || statusCode === 408) {
+            console.log(`[WA] Error ${statusCode}, clearing session and reconnecting...`);
+            this._clearSession();
+            setTimeout(() => this.connect(), 5000);
+          } else {
+            console.log('[WA] Reconnecting in 5s...');
+            setTimeout(() => this.connect(), 5000);
+          }
         }
       });
 
-      console.log('[WA] WPPConnect client created, waiting for QR...');
-
-      this.client.onQR(async (qr) => {
-        console.log('[WA] QR Code received, type:', typeof qr, 'length:', qr?.length);
-        this.qrCode = qr;
+      this.sock.ev.on('messages.upsert', (m) => {
+        if (m.type !== 'notify') return;
+        for (const msg of m.messages) {
+          if (msg.key.fromMe) continue;
+          this._processMessage(msg);
+        }
       });
 
-      this.client.onReady(() => {
-        console.log('[WA] WhatsApp connected and ready');
-        this.isConnected = true;
-        this.qrCode = null;
-        this._loadedChats.clear();
-        this._loadHistory();
-      });
-
-      this.client.onDisconnected(() => {
-        console.log('[WA] WhatsApp disconnected');
-        this.isConnected = false;
-        this.qrCode = null;
-        this._started = false;
-      });
-
-      this.client.onMessage(async (message) => {
-        try {
-          const fromMe = message.fromMe;
-          const chatId = message.chatId || '';
-          const phone = chatId.replace('@c.us', '').replace('@g.us', '');
-          const isGroup = chatId.includes('@g.us');
-          if (isGroup) return;
-
-          const text = message.body || '';
-          if (!text) return;
-
-          let quotedText = null;
-          if (message.quotedMsg?.body) {
-            quotedText = message.quotedMsg.body;
+      this.sock.ev.on('messages.update', (updates) => {
+        for (const update of updates) {
+          if (update.update?.status) {
+            const statusMap = { 1: 'sent', 2: 'delivered', 3: 'read' };
+            const status = statusMap[update.update.status] || 'unknown';
+            console.log(`[WA] Message ${update.key.id} status: ${status}`);
           }
-
-          let type = 'text';
-          if (message.isMedia || message.isMMS) {
-            type = message.type || 'media';
-          }
-
-          messageStore.add({
-            from: fromMe ? 'bot' : phone,
-            to: fromMe ? phone : 'bot',
-            body: text,
-            direction: fromMe ? 'outgoing' : 'incoming',
-            status: 'received',
-            customerName: message.notifyName || phone,
-            quotedText,
-            type,
-            timestamp: message.timestamp ? new Date(message.timestamp * 1000).toISOString() : new Date().toISOString()
-          });
-          console.log(`[${fromMe ? 'OUT' : 'IN'}] ${phone}: ${text.substring(0, 50)}`);
-        } catch (err) {
-          console.error('[WA] Message processing error:', err.message);
         }
       });
 
@@ -119,79 +122,91 @@ export class WhatsAppService {
     }
   }
 
-  _findChromium() {
-    const paths = [
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser',
-      '/usr/bin/google-chrome',
-      '/usr/bin/google-chrome-stable',
-      '/snap/bin/chromium',
-      process.env.CHROME_BIN
-    ].filter(Boolean);
+  _cleanWPPConnectFiles() {
+    const chromeDirs = ['Default', 'Crashpad', 'GrShaderCache', 'ShaderCache', 'GraphiteDawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'segmentation_platform'];
+    const chromeFiles = ['DevToolsActivePort', 'Last Version', 'Local State', 'Variations', 'CrashpadMetrics-active.pma'];
 
-    for (const p of paths) {
-      try {
-        if (fs.existsSync(p)) return p;
-      } catch {}
+    for (const dir of chromeDirs) {
+      const dirPath = path.join(this.sessionDir, dir);
+      if (fs.existsSync(dirPath)) {
+        try {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+          console.log(`[WA] Cleaned WPPConnect dir: ${dir}`);
+        } catch {}
+      }
     }
-    return null;
+    for (const file of chromeFiles) {
+      const filePath = path.join(this.sessionDir, file);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`[WA] Cleaned WPPConnect file: ${file}`);
+        } catch {}
+      }
+    }
   }
 
-  async _loadHistory() {
-    if (!this.client || !this.isConnected) return;
-    console.log('[HISTORY] Loading chat history...');
-
+  _clearSession() {
     try {
-      const chats = await this.client.listChats({ onlyUsers: true, limit: 50 });
-      console.log(`[HISTORY] Found ${chats.length} chats`);
-
-      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-      let loaded = 0;
-
-      for (const chat of chats) {
-        const chatId = chat.id;
-        if (!chatId || chatId.includes('@g.us')) continue;
-        if (this._loadedChats.has(chatId)) continue;
-        this._loadedChats.add(chatId);
-
-        try {
-          const messages = await this.client.getMessages(chatId, 50);
-          let count = 0;
-
-          for (const msg of (messages || [])) {
-            const ts = msg.timestamp ? msg.timestamp * 1000 : 0;
-            if (ts < sevenDaysAgo) continue;
-
-            const fromMe = msg.fromMe;
-            const phone = chatId.replace('@c.us', '');
-            const text = msg.body || '';
-            if (!text) continue;
-
-            let quotedText = null;
-            if (msg.quotedMsg?.body) quotedText = msg.quotedMsg.body;
-
-            messageStore.add({
-              from: fromMe ? 'bot' : phone,
-              to: fromMe ? phone : 'bot',
-              body: text,
-              direction: fromMe ? 'outgoing' : 'incoming',
-              status: 'synced',
-              customerName: chat.name || phone,
-              quotedText,
-              type: msg.isMedia ? 'media' : 'text',
-              timestamp: ts ? new Date(ts).toISOString() : new Date().toISOString()
-            });
-            count++;
-          }
-          loaded++;
-          console.log(`[HISTORY] ${chatId}: ${count} messages`);
-        } catch (err) {
-          console.warn(`[HISTORY] Failed ${chatId}:`, err.message);
+      if (fs.existsSync(this.sessionDir)) {
+        const files = fs.readdirSync(this.sessionDir);
+        for (const file of files) {
+          const filePath = path.join(this.sessionDir, file);
+          try {
+            if (fs.statSync(filePath).isFile()) {
+              fs.unlinkSync(filePath);
+              console.log(`[WA] Deleted: ${file}`);
+            }
+          } catch {}
         }
+        console.log('[WA] Session cleared');
       }
-      console.log(`[HISTORY] Done: ${loaded} chats, ${messageStore.count} total messages`);
     } catch (err) {
-      console.error('[HISTORY] Error:', err.message);
+      console.error('[WA] Error clearing session:', err.message);
+    }
+  }
+
+  _processMessage(msg) {
+    try {
+      const chatId = msg.key.remoteJid || '';
+      const isGroup = chatId.includes('@g.us');
+      if (isGroup) return;
+
+      const phone = chatId.replace('@c.us', '').replace('@s.whatsapp.net', '');
+      const text = msg.message?.conversation
+        || msg.message?.extendedTextMessage?.text
+        || msg.message?.buttonsResponseMessage?.selectedButtonId
+        || msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId
+        || '';
+
+      if (!text) return;
+
+      let quotedText = null;
+      const ctx = msg.message?.extendedTextMessage?.contextInfo;
+      if (ctx?.quotedMessage) {
+        quotedText = ctx.quotedMessage.conversation || ctx.quotedMessage.extendedTextMessage?.text || null;
+      }
+
+      let type = 'text';
+      if (msg.message?.imageMessage) type = 'image';
+      else if (msg.message?.videoMessage) type = 'video';
+      else if (msg.message?.audioMessage) type = 'audio';
+      else if (msg.message?.documentMessage) type = 'document';
+
+      messageStore.add({
+        from: phone,
+        to: 'bot',
+        body: text,
+        direction: 'incoming',
+        status: 'received',
+        customerName: msg.pushName || phone,
+        quotedText,
+        type,
+        timestamp: msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000).toISOString() : new Date().toISOString()
+      });
+      console.log(`[IN] ${phone}: ${text.substring(0, 50)}`);
+    } catch (err) {
+      console.error('[WA] Message error:', err.message);
     }
   }
 
@@ -199,15 +214,15 @@ export class WhatsAppService {
   getPairingCode() { return this.pairingCode; }
 
   async requestPairingCode(phoneNumber) {
-    if (!this.client || !this.isConnected) throw new Error('WhatsApp not connected');
+    if (!this.sock || !this.isConnected) throw new Error('WhatsApp not connected');
     const formattedPhone = formatPhone(phoneNumber);
-    const code = await this.client.requestPairingCode(formattedPhone);
+    const code = await this.sock.requestPairingCode(formattedPhone);
     this.pairingCode = code;
     return code;
   }
 
   async sendMessage(phone, message, options = {}) {
-    if (!this.client || !this.isConnected) throw new Error('WhatsApp not connected');
+    if (!this.sock || !this.isConnected) throw new Error('WhatsApp not connected');
 
     let chatId;
     if (phone.includes('@')) {
@@ -218,11 +233,19 @@ export class WhatsAppService {
     }
 
     try {
-      const result = await this.client.sendText(chatId, message);
-      return { success: true, messageId: result?.key?.id || result?.id, remoteJid: chatId };
+      const result = await this.sock.sendMessage(chatId, { text: message });
+      return { success: true, messageId: result?.key?.id, remoteJid: chatId };
     } catch (error) {
       console.error('[WA] Send failed:', error.message);
       return { success: false, error: error.message };
     }
+  }
+
+  resetSession() {
+    this._started = false;
+    this.isConnected = false;
+    this.qrCode = null;
+    this.sock = null;
+    this._clearSession();
   }
 }
