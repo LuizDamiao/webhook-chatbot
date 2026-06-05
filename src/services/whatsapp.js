@@ -1,6 +1,6 @@
 import pino from 'pino';
 import { messageStore } from './messageStore.js';
-import { existsSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const logger = pino({ level: 'warn' });
@@ -15,7 +15,15 @@ export function formatPhone(phone) {
 
 export class WhatsAppService {
   constructor(sessionDir) {
-    this.sessionDir = sessionDir || './auth_info';
+    // Auto-detect Render disk or use provided path
+    if (sessionDir) {
+      this.sessionDir = sessionDir;
+    } else if (existsSync('/data')) {
+      this.sessionDir = '/data/auth_info';
+    } else {
+      this.sessionDir = './auth_info';
+    }
+    console.log('[WA] Session dir:', this.sessionDir);
     this.sock = null;
     this.isConnected = false;
     this.qrCode = null;
@@ -26,6 +34,12 @@ export class WhatsAppService {
   async connect() {
     try {
       console.log('[WA] Starting connect()...');
+      // Ensure session directory exists
+      if (!existsSync(this.sessionDir)) {
+        mkdirSync(this.sessionDir, { recursive: true });
+        console.log('[WA] Created session dir:', this.sessionDir);
+      }
+
       // Check if session is from a different Baileys version — clear if so
       const versionFile = join(this.sessionDir, '.baileys-version');
       try {
@@ -34,10 +48,12 @@ export class WhatsAppService {
           if (stored !== BAILEYS_VERSION) {
             console.log(`[WA] Session version mismatch (${stored} vs ${BAILEYS_VERSION}), clearing`);
             rmSync(this.sessionDir, { recursive: true, force: true });
+            mkdirSync(this.sessionDir, { recursive: true });
           }
         } else if (existsSync(join(this.sessionDir, 'creds.json'))) {
           console.log('[WA] Old session detected, clearing');
           rmSync(this.sessionDir, { recursive: true, force: true });
+          mkdirSync(this.sessionDir, { recursive: true });
         }
       } catch (e) { console.log('[WA] Session check error:', e.message); }
       writeFileSync(versionFile, BAILEYS_VERSION, 'utf-8');
