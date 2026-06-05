@@ -10,6 +10,8 @@ const TOP_K_CHUNKS = 3;
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_SUGGESTIONS = 2;
 const DEFAULT_CONFIDENCE = 0.8;
+const CONFIDENCE_PER_CHUNK = 0.05;
+const MAX_CONFIDENCE = 0.95;
 
 const DB_DIR = fs.existsSync('/data') ? '/data' : path.join(process.cwd(), 'data');
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
@@ -215,7 +217,7 @@ export async function processMessage(phone, message) {
     }
 
     const confidence = relevantChunks.length > 0
-      ? Math.min(DEFAULT_CONFIDENCE + (relevantChunks.length * 0.05), 0.95)
+      ? Math.min(DEFAULT_CONFIDENCE + (relevantChunks.length * CONFIDENCE_PER_CHUNK), MAX_CONFIDENCE)
       : DEFAULT_CONFIDENCE;
 
     messageStore.add({
