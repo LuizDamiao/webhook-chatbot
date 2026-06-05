@@ -327,6 +327,67 @@ body {
 }
 .btn-send:hover { background: #06cf9c; }
 
+/* ─── Reply Bar ─────────────────────────────────────── */
+.reply-bar {
+    padding: 8px 16px;
+    background: var(--bg-input);
+    border-left: 4px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 16px;
+    border-radius: 4px;
+}
+.reply-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reply-label { font-size: 0.75rem; color: var(--accent); font-weight: 600; }
+.reply-text { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reply-close {
+    background: none; border: none; color: var(--text-secondary); font-size: 1.1rem; cursor: pointer; padding: 4px 8px;
+}
+.reply-close:hover { color: var(--error); }
+
+/* ─── Attach / Mic / Camera Buttons ─────────────────── */
+.btn-attach, .btn-mic, .btn-camera {
+    width: 38px; height: 38px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+.btn-attach:hover, .btn-mic:hover, .btn-camera:hover { background: var(--bg-input); color: var(--text); }
+.btn-mic.recording { color: var(--error); animation: pulse 1s infinite; }
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* ─── Message Extras ────────────────────────────────── */
+.quoted-message {
+    background: rgba(0,0,0,0.2);
+    border-left: 3px solid var(--accent);
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.quoted-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
+.message-status { font-size: 0.7rem; margin-left: 4px; }
+.message-status.sent { color: var(--text-secondary); }
+.message-status.delivered { color: var(--text-secondary); }
+.message-status.read { color: #53bdeb; }
+.message-audio, .message-image, .message-doc {
+    font-size: 0.8rem; padding: 4px 0; color: var(--text-secondary);
+}
+
 /* ═══════════════════════════════════════════════════════
    TEMPLATES VIEW
    ═══════════════════════════════════════════════════════ */

@@ -30,6 +30,9 @@ let allMessages = [];
 let refreshMessages = null;
 let refreshContacts = null;
 let refreshStatus = null;
+let replyingTo = null;
+let mediaRecorder = null;
+let audioChunks = [];
 
 // ─── API Helper ─────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
@@ -138,8 +141,19 @@ function renderMessages(messages) {
         const time = timestamp ? new Date(timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
         const text = msg.text || msg.body || msg.message || msg.content || '';
         const isSent = msg.direction === 'outgoing' || msg.direction === 'sent';
+        const status = msg.status || '';
+        let statusIcon = '';
+        if (isSent) {
+            if (status === 'read') statusIcon = '<span class="message-status read">✓✓</span>';
+            else if (status === 'delivered') statusIcon = '<span class="message-status delivered">✓✓</span>';
+            else statusIcon = '<span class="message-status sent">✓</span>';
+        }
         if (date && date !== lastDate) { lastDate = date; html += `<div class="message-date-divider"><span>${date}</span></div>`; }
-        html += `<div class="message-bubble ${isSent ? 'message-sent' : 'message-received'}"><div class="message-text">${escapeHtml(text)}</div><div class="message-meta"><span class="message-time">${time}</span>${isSent ? '<span class="message-status">✓</span>' : ''}</div></div>`;
+        const quoted = msg.quotedText ? `<div class="quoted-message"><div class="quoted-text">${escapeHtml(msg.quotedText.substring(0, 80))}</div></div>` : '';
+        const media = msg.type === 'audio' ? '<div class="message-audio">🎵 Áudio</div>' :
+                      msg.type === 'image' ? `<div class="message-image">📷 Imagem</div>` :
+                      msg.type === 'document' ? `<div class="message-doc">📄 ${escapeHtml(msg.fileName || 'Arquivo')}</div>` : '';
+        html += `<div class="message-bubble ${isSent ? 'message-sent' : 'message-received'}" data-id="${msg.id || ''}" onclick="startReply('${(msg.id || '').replace(/'/g, "\\'")}', '${escapeHtml((text || '').substring(0, 50).replace(/'/g, "\\'"))}')">${quoted}${media}<div class="message-text">${escapeHtml(text)}</div><div class="message-meta"><span class="message-time">${time}</span>${statusIcon}</div></div>`;
     });
     container.innerHTML = html;
     container.scrollTop = container.scrollHeight;
@@ -156,6 +170,7 @@ function selectContact(phone) {
         }
     });
     loadMessages(phone).then(messages => { allMessages = messages; renderMessages(messages); });
+    apiFetch('/api/messages/read', { method: 'POST', body: JSON.stringify({ phone }) }).catch(() => {});
 }
 window.selectContact = selectContact;
 
@@ -393,6 +408,95 @@ async function deleteTemplateAPI(event) {
     await apiFetch(`/api/templates/${event}`, { method: 'DELETE' });
 }
 
+// ─── Reply ─────────────────────────────────────────────────
+window.startReply = function(msgId, text) {
+    if (!msgId) return;
+    replyingTo = msgId;
+    document.getElementById('replyBar').classList.remove('hidden');
+    document.getElementById('replyText').textContent = text || '...';
+    document.getElementById('chatInput').focus();
+};
+
+function cancelReply() {
+    replyingTo = null;
+    document.getElementById('replyBar').classList.add('hidden');
+}
+
+// ─── Audio Recording ───────────────────────────────────────
+async function startRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        document.getElementById('micBtn').classList.remove('recording');
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            if (!selectedContact || audioChunks.length === 0) return;
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onload = async () => {
+                showToast('Enviando áudio...', 'success');
+                const res = await apiFetch('/api/messages/audio', {
+                    method: 'POST',
+                    body: JSON.stringify({ phone: selectedContact, audio: reader.result })
+                });
+                if (res && res.ok) {
+                    const messages = await loadMessages(selectedContact);
+                    allMessages = messages;
+                    renderMessages(messages);
+                } else {
+                    const err = res ? await res.json().catch(() => ({})) : {};
+                    showToast(err.error || 'Erro ao enviar áudio', 'error');
+                }
+            };
+            reader.readAsDataURL(blob);
+        };
+        mediaRecorder.start();
+        document.getElementById('micBtn').classList.add('recording');
+        showToast('Gravando áudio... clique novamente para enviar', 'success');
+    } catch (err) {
+        showToast('Erro ao acessar microfone: ' + err.message, 'error');
+    }
+}
+
+// ─── File/Image Send ───────────────────────────────────────
+function triggerFileInput(accept, type) {
+    const input = document.getElementById('fileInput');
+    input.accept = accept;
+    input.dataset.sendType = type;
+    input.click();
+}
+
+async function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file || !selectedContact) return;
+    const type = e.target.dataset.sendType || 'document';
+    const reader = new FileReader();
+    reader.onload = async () => {
+        const endpoint = type === 'image' ? '/api/messages/image' : '/api/messages/document';
+        const body = type === 'image'
+            ? { phone: selectedContact, image: reader.result, caption: '' }
+            : { phone: selectedContact, file: reader.result, fileName: file.name, mimeType: file.type };
+        showToast(`Enviando ${type === 'image' ? 'imagem' : 'arquivo'}...`, 'success');
+        const res = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(body) });
+        if (res && res.ok) {
+            const messages = await loadMessages(selectedContact);
+            allMessages = messages;
+            renderMessages(messages);
+        } else {
+            const err = res ? await res.json().catch(() => ({})) : {};
+            showToast(err.error || 'Erro ao enviar', 'error');
+        }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+}
+
 // ─── Init ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     if (!window.auth.isAuthenticated()) { window.location.href = window.BASE_URL + '/login.html'; return; }
@@ -429,8 +533,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!selectedContact || !chatInput.value.trim()) return;
             const text = chatInput.value.trim();
             chatInput.value = '';
+            cancelReply();
             try {
-                const response = await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify({ phone: selectedContact, text }) });
+                const body = { phone: selectedContact, text };
+                if (replyingTo) body.quoted = replyingTo;
+                const response = await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify(body) });
                 if (!response) return;
                 if (!response.ok) {
                     const err = await response.json().catch(() => ({}));
@@ -445,6 +552,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         sendBtn.addEventListener('click', sendMessage);
         chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     }
+
+    // Audio, file, image, reply buttons
+    document.getElementById('micBtn')?.addEventListener('click', startRecording);
+    document.getElementById('attachBtn')?.addEventListener('click', () => triggerFileInput('*/*', 'document'));
+    document.getElementById('imageBtn')?.addEventListener('click', () => triggerFileInput('image/*', 'image'));
+    document.getElementById('fileInput')?.addEventListener('change', handleFileSelect);
+    document.getElementById('replyClose')?.addEventListener('click', cancelReply);
 
     // Template events
     document.getElementById('messageInput')?.addEventListener('input', updatePreview);

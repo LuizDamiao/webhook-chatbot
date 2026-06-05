@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 });
 
 // Raw body capture for webhook debugging
-app.use(express.json({ limit: '100kb', verify: (req, res, buf) => { req.rawBody = buf.toString(); } }));
+app.use(express.json({ limit: '10mb', verify: (req, res, buf) => { req.rawBody = buf.toString(); } }));
 app.use(express.urlencoded({ extended: true, verify: (req, res, buf) => { req.rawBody = buf.toString(); } }));
 
 const webhookLog = [];
@@ -129,7 +129,7 @@ app.get('/api/qrcode', authJWT, async (req, res) => {
 // POST /api/messages - Envia mensagem via WhatsApp
 app.post('/api/messages', authJWT, async (req, res) => {
   console.log('[POST /api/messages] Body:', JSON.stringify(req.body));
-  const { to, phone, text, body } = req.body;
+  const { to, phone, text, body, quoted } = req.body;
   const recipient = to || phone;
   const messageText = text || body;
 
@@ -146,19 +146,21 @@ app.post('/api/messages', authJWT, async (req, res) => {
   }
 
   try {
-    const result = await whatsappService.sendMessage(recipient, messageText);
+    const result = await whatsappService.sendMessage(recipient, messageText, { quoted });
 
     if (!result.success) {
       return res.status(500).json({ error: result.error || 'Failed to send message' });
     }
 
+    const quotedMsg = quoted ? messageStore.messages.find(m => m.id === quoted) : null;
     const sentMessage = {
       from: 'bot',
       to: recipient,
       body: messageText,
       direction: 'outgoing',
       timestamp: new Date().toISOString(),
-      id: result.messageId || Date.now().toString()
+      id: result.messageId || Date.now().toString(),
+      quotedText: quotedMsg?.body || null
     };
 
     const stored = messageStore.add(sentMessage);
@@ -167,6 +169,57 @@ app.post('/api/messages', authJWT, async (req, res) => {
     res.status(200).json({ success: true, message: sentMessage });
   } catch (error) {
     console.error('POST /api/messages error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/messages/audio - Envia áudio
+app.post('/api/messages/audio', authJWT, async (req, res) => {
+  const { phone, audio } = req.body;
+  if (!phone || !audio) return res.status(400).json({ error: 'phone and audio (base64) required' });
+  if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
+  try {
+    const buffer = Buffer.from(audio.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+    const result = await whatsappService.sock.sendMessage(jid, { audio: buffer, mimetype: 'audio/mpeg', ptt: true });
+    const stored = messageStore.add({ from: 'bot', to: phone, body: '[Áudio]', direction: 'outgoing', status: 'sent', type: 'audio', id: result?.key?.id });
+    res.json({ success: true, message: stored });
+  } catch (error) {
+    console.error('Send audio error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/messages/document - Envia arquivo
+app.post('/api/messages/document', authJWT, async (req, res) => {
+  const { phone, file, fileName, mimeType } = req.body;
+  if (!phone || !file) return res.status(400).json({ error: 'phone and file (base64) required' });
+  if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
+  try {
+    const buffer = Buffer.from(file.replace(/^data:[^;]+;base64,/, ''), 'base64');
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+    const result = await whatsappService.sock.sendMessage(jid, { document: buffer, fileName: fileName || 'arquivo', mimetype: mimeType || 'application/octet-stream' });
+    const stored = messageStore.add({ from: 'bot', to: phone, body: `[Arquivo: ${fileName || 'arquivo'}]`, direction: 'outgoing', status: 'sent', type: 'document', fileName, id: result?.key?.id });
+    res.json({ success: true, message: stored });
+  } catch (error) {
+    console.error('Send document error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/messages/image - Envia imagem
+app.post('/api/messages/image', authJWT, async (req, res) => {
+  const { phone, image, caption } = req.body;
+  if (!phone || !image) return res.status(400).json({ error: 'phone and image (base64) required' });
+  if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
+  try {
+    const buffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+    const result = await whatsappService.sock.sendMessage(jid, { image: buffer, caption: caption || '' });
+    const stored = messageStore.add({ from: 'bot', to: phone, body: caption || '[Imagem]', direction: 'outgoing', status: 'sent', type: 'image', id: result?.key?.id });
+    res.json({ success: true, message: stored });
+  } catch (error) {
+    console.error('Send image error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -249,6 +302,29 @@ app.get('/api/contacts', authJWT, (req, res) => {
     .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
   res.json({ contacts, count: contacts.length });
+});
+
+// POST /api/messages/read - Mark messages as read on WhatsApp
+app.post('/api/messages/read', authJWT, async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'phone required' });
+  if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
+
+  try {
+    const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+    const unread = messageStore.messages.filter(m => m.from === phone && m.direction === 'incoming' && m.status !== 'read');
+    if (unread.length > 0) {
+      const keys = unread.map(m => m.id ? { remoteJid: jid, id: m.id, fromMe: false } : null).filter(Boolean);
+      if (keys.length > 0) {
+        await whatsappService.sock.readMessages(keys);
+      }
+      unread.forEach(m => { m.status = 'read'; });
+    }
+    res.json({ success: true, marked: unread.length });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Template routes

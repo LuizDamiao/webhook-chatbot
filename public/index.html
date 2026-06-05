@@ -53,8 +53,19 @@
                         <p>Escolha uma conversa para ver as mensagens</p>
                     </div>
                 </div>
+                <div class="reply-bar hidden" id="replyBar">
+                    <div class="reply-info">
+                        <span class="reply-label">Respondendo</span>
+                        <span class="reply-text" id="replyText"></span>
+                    </div>
+                    <button class="reply-close" id="replyClose">✕</button>
+                </div>
                 <div class="chat-input-area">
+                    <input type="file" id="fileInput" class="hidden" accept="*/*">
+                    <button class="btn-attach" id="attachBtn" title="Enviar arquivo">📎</button>
+                    <button class="btn-camera" id="imageBtn" title="Enviar imagem">📷</button>
                     <textarea class="chat-input" id="chatInput" placeholder="Digite uma mensagem..." rows="1"></textarea>
+                    <button class="btn-mic" id="micBtn" title="Gravar áudio">🎤</button>
                     <button class="btn-send" id="sendBtn">➤</button>
                 </div>
             </section>

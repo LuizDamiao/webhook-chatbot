@@ -87,8 +87,16 @@ export class WhatsAppService {
           let phone = msg.key.participant?.replace('@s.whatsapp.net', '')?.replace('@lid', '') ||
                       rawJid.replace('@s.whatsapp.net', '').replace('@lid', '') || '';
           const jid = rawJid.includes('@lid') ? rawJid : (phone ? `${phone}@s.whatsapp.net` : '');
-          const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.buttonsResponseMessage?.selectedButtonId || '';
+          const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text ||
+                       msg.message?.buttonsResponseMessage?.selectedButtonId || '';
           if (!phone || !text) continue;
+
+          let quotedText = null;
+          const ctx = msg.message?.extendedTextMessage?.contextInfo;
+          if (ctx?.quotedMessage) {
+            quotedText = ctx.quotedMessage.conversation || ctx.quotedMessage.extendedTextMessage?.text || null;
+          }
+
           const stored = messageStore.add({
             from: fromMe ? 'bot' : (jid || phone),
             to: fromMe ? (jid || phone) : 'bot',
@@ -96,6 +104,7 @@ export class WhatsAppService {
             direction: fromMe ? 'outgoing' : 'incoming',
             status: 'received',
             customerName: msg.pushName || phone,
+            quotedText,
             timestamp: msg.messageTimestamp ?
               (typeof msg.messageTimestamp === 'number' ? new Date(msg.messageTimestamp * 1000).toISOString() : msg.messageTimestamp) :
               undefined
@@ -107,18 +116,16 @@ export class WhatsAppService {
       this.sock.ev.on('messages.update', (updates) => {
         for (const update of updates) {
           const status = update.update?.status;
-          if (status) {
-            const statusMap = {
-              0: 'ERROR',
-              1: 'PENDING',
-              2: 'SERVER_ACK',
-              3: 'DELIVERY_ACK',
-              4: 'READ',
-              5: 'PLAYED',
-              16: 'SENT'
-            };
-            const statusText = statusMap[status] || `STATUS_${status}`;
-            logger.info(`Message ${update.key?.id} status: ${statusText} (${status})`);
+          if (status == null) continue;
+          const statusMap = { 0: 'error', 1: 'pending', 2: 'sent', 3: 'delivered', 4: 'read', 5: 'played', 16: 'sent' };
+          const statusText = statusMap[status] || `status_${status}`;
+          const msgId = update.key?.id;
+          if (msgId) {
+            const msg = messageStore.messages.find(m => m.id === msgId);
+            if (msg) {
+              msg.status = statusText;
+              logger.info(`Message ${msgId} status: ${statusText}`);
+            }
           }
         }
       });
@@ -173,29 +180,30 @@ export class WhatsAppService {
       return;
     }
 
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const chats = store.chats.all();
-    logger.info(`Loading history from ${chats.length} chats`);
+    logger.info(`Loading history from ${chats.length} chats (last 7 days)`);
 
     let loaded = 0;
     for (const chat of chats) {
       if (chat.id?.includes('@g.us')) continue;
 
       try {
-        const history = await this.sock.loadMessages(chat.id, 30);
+        const history = await this.sock.loadMessages(chat.id, 50);
         if (!history?.messages) continue;
 
         for (const msg of history.messages) {
           if (!msg.message) continue;
+          const ts = msg.messageTimestamp ?
+            (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : new Date(msg.messageTimestamp).getTime()) : 0;
+          if (ts < sevenDaysAgo) continue;
+
           const fromMe = msg.key?.fromMe;
           const jid = msg.key?.remoteJid || chat.id;
           const phone = jid.replace('@s.whatsapp.net', '').replace('@lid', '');
           const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text ||
                        msg.message?.buttonsResponseMessage?.selectedButtonId || '';
           if (!text) continue;
-
-          const timestamp = msg.messageTimestamp ?
-            (typeof msg.messageTimestamp === 'number' ? new Date(msg.messageTimestamp * 1000) : new Date(msg.messageTimestamp)) :
-            new Date();
 
           messageStore.add({
             from: fromMe ? 'bot' : (jid || phone),
@@ -204,7 +212,7 @@ export class WhatsAppService {
             direction: fromMe ? 'outgoing' : 'incoming',
             status: 'synced',
             customerName: chat.name || phone,
-            timestamp: timestamp.toISOString()
+            timestamp: new Date(ts).toISOString()
           });
         }
         loaded++;
@@ -222,7 +230,7 @@ export class WhatsAppService {
    * @param {string} message - Message text
    * @returns {boolean} Success status
    */
-  async sendMessage(phone, message) {
+  async sendMessage(phone, message, options = {}) {
     if (!this.sock || !this.isConnected) {
       throw new Error('WhatsApp not connected');
     }
@@ -250,7 +258,11 @@ export class WhatsAppService {
     }
 
     try {
-      const result = await this.sock.sendMessage(jid, { text: message });
+      const payload = { text: message };
+      if (options.quoted) {
+        payload.quoted = { key: { remoteJid: jid, id: options.quoted, fromMe: false } };
+      }
+      const result = await this.sock.sendMessage(jid, payload);
       logger.info(`Message sent to ${jid}`, {
         messageId: result?.key?.id,
         remoteJid: result?.key?.remoteJid,
