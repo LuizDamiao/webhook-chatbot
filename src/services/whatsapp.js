@@ -25,25 +25,28 @@ export class WhatsAppService {
 
   async connect() {
     try {
+      console.log('[WA] Starting connect()...');
       // Check if session is from a different Baileys version — clear if so
       const versionFile = join(this.sessionDir, '.baileys-version');
       try {
         if (existsSync(versionFile)) {
           const stored = readFileSync(versionFile, 'utf-8').trim();
           if (stored !== BAILEYS_VERSION) {
-            logger.info(`Session version mismatch (${stored} vs ${BAILEYS_VERSION}), clearing session`);
+            console.log(`[WA] Session version mismatch (${stored} vs ${BAILEYS_VERSION}), clearing`);
             rmSync(this.sessionDir, { recursive: true, force: true });
           }
         } else if (existsSync(join(this.sessionDir, 'creds.json'))) {
-          // Has old session but no version marker — assume old version
-          logger.info('Old session detected (no version marker), clearing');
+          console.log('[WA] Old session detected, clearing');
           rmSync(this.sessionDir, { recursive: true, force: true });
         }
-      } catch {}
+      } catch (e) { console.log('[WA] Session check error:', e.message); }
       writeFileSync(versionFile, BAILEYS_VERSION, 'utf-8');
 
+      console.log('[WA] Importing Baileys...');
       const baileys = await import('@whiskeysockets/baileys');
+      console.log('[WA] Baileys imported, keys:', Object.keys(baileys).filter(k => k.includes('ake') || k.includes('ocket') || k.includes('onnect')));
       const { state, saveCreds } = await baileys.useMultiFileAuthState(this.sessionDir);
+      console.log('[WA] Auth state loaded');
 
       this.sock = baileys.makeWASocket({
         auth: state,
@@ -52,15 +55,17 @@ export class WhatsAppService {
         browser: ['ChatBot Webhook', 'Chrome', '4.0.0'],
         markOnlineOnConnect: false
       });
+      console.log('[WA] Socket created, waiting for QR...');
 
       this.sock.ev.on('creds.update', saveCreds);
 
       this.sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
+        console.log('[WA] Connection update:', connection, qr ? 'QR_RECEIVED' : 'no QR', lastDisconnect?.error?.output?.statusCode || '');
 
         if (qr) {
           this.qrCode = qr;
-          logger.info('QR Code received');
+          console.log('[WA] QR Code stored');
         }
 
         if (connection === 'close') {
@@ -131,7 +136,7 @@ export class WhatsAppService {
       });
 
     } catch (error) {
-      logger.error('Failed to initialize WhatsApp:', error);
+      console.error('[WA] Failed to initialize:', error.message, error.stack);
       throw error;
     }
   }

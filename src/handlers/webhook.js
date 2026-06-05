@@ -6,8 +6,11 @@ import { templateService } from '../services/templateService.js';
 
 const whatsappService = new WhatsAppService(process.env.SESSION_DIR);
 
-whatsappService.connect().catch(err => {
-  console.error('Failed to connect WhatsApp:', err);
+console.log('[INIT] Starting WhatsApp connection...');
+whatsappService.connect().then(() => {
+  console.log('[INIT] WhatsApp connect() resolved');
+}).catch(err => {
+  console.error('[INIT] Failed to connect WhatsApp:', err.message, err.stack);
 });
 
 /**
