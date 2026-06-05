@@ -86,13 +86,26 @@ export class WhatsAppService {
 
         if (connection === 'close') {
           const statusCode = lastDisconnect?.error?.output?.statusCode;
-          const shouldReconnect = statusCode !== baileys.DisconnectReason.loggedOut;
-          logger.info(`Connection closed (code: ${statusCode}), reconnect: ${shouldReconnect}`);
+          console.log(`[WA] Connection closed, code: ${statusCode}`);
           this.isConnected = false;
           this.qrCode = null;
           this.pairingCode = null;
           this._loadedChats.clear();
-          if (shouldReconnect) {
+
+          // 405 = session invalid/expired, 401 = logged out — clear session
+          if (statusCode === 405 || statusCode === 401) {
+            console.log('[WA] Invalid session, clearing and reconnecting...');
+            try {
+              const { readdirSync, unlinkSync } = await import('node:fs');
+              const files = readdirSync(this.sessionDir);
+              for (const f of files) {
+                if (f === '.baileys-version') continue;
+                unlinkSync(join(this.sessionDir, f));
+                console.log(`[WA] Deleted: ${f}`);
+              }
+            } catch (e) { console.log('[WA] Clear error:', e.message); }
+            setTimeout(() => this.connect(), 5000);
+          } else if (statusCode !== baileys.DisconnectReason.loggedOut) {
             setTimeout(() => this.connect(), 3000);
           }
         } else if (connection === 'open') {
