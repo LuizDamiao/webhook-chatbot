@@ -327,6 +327,79 @@ app.post('/api/messages/read', authJWT, async (req, res) => {
   }
 });
 
+// POST /api/whatsapp/load-chats - Force load all chats from WhatsApp
+app.post('/api/whatsapp/load-chats', authJWT, async (req, res) => {
+  if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
+  try {
+    const sock = whatsappService.sock;
+    // Try to get chat list from store or query directly
+    let chats = [];
+    if (sock.store?.chats?.all) {
+      chats = sock.store.chats.all();
+    } else {
+      // Fallback: use chatFetch or query
+      try {
+        chats = await sock.chatFetch?.() || [];
+      } catch {}
+    }
+    if (!chats.length) {
+      // Last resort: try to get from Baileys internal
+      try {
+        const result = await sock.query({ tag: 'get', attrs: { type: 'w:p', epoch: 'true' }, content: [{ tag: 'count', attrs: {} }] });
+        // Just return current messageStore contacts as fallback
+        return res.json({ success: true, contacts: messageStore.count, message: 'No chat list available from WhatsApp. Messages will load as they arrive.' });
+      } catch {}
+    }
+    let loaded = 0;
+    for (const chat of chats) {
+      if (chat.id?.includes('@g.us')) continue;
+      try {
+        await whatsappService.loadMessagesFromChat(chat.id, chat.name);
+        loaded++;
+      } catch {}
+    }
+    res.json({ success: true, loaded, total: chats.length });
+  } catch (error) {
+    console.error('Load chats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/whatsapp/load-chat/:phone - Load history for a specific contact
+app.post('/api/whatsapp/load-chat/:phone', authJWT, async (req, res) => {
+  if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
+  const phone = req.params.phone;
+  try {
+    const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+    const sock = whatsappService.sock;
+    const history = await sock.loadMessages(jid, 50);
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    let loaded = 0;
+    for (const msg of (history?.messages || [])) {
+      if (!msg.message) continue;
+      const ts = msg.messageTimestamp ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : 0) : 0;
+      if (ts < sevenDaysAgo) continue;
+      const fromMe = msg.key?.fromMe;
+      const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+      if (!text) continue;
+      let quotedText = null;
+      const ctx = msg.message?.extendedTextMessage?.contextInfo;
+      if (ctx?.quotedMessage) {
+        quotedText = ctx.quotedMessage.conversation || ctx.quotedMessage.extendedTextMessage?.text || null;
+      }
+      messageStore.add({
+        from: fromMe ? 'bot' : jid, to: fromMe ? jid : 'bot',
+        body: text, direction: fromMe ? 'outgoing' : 'incoming', status: 'synced',
+        customerName: phone, quotedText, timestamp: new Date(ts).toISOString()
+      });
+      loaded++;
+    }
+    res.json({ success: true, loaded });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Template routes
 app.use('/api/templates', templateRoutes);
 

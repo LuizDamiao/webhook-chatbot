@@ -159,10 +159,16 @@ body {
 }
 
 .contacts-header {
-    padding: 14px 16px;
-    background: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
     border-bottom: 1px solid var(--border);
 }
+.btn-refresh {
+    background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+}
+.btn-refresh:hover { background: var(--bg-input); color: var(--text); }
 .contacts-header h3 { font-size: 1rem; font-weight: 600; }
 
 .contacts-search {

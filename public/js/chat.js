@@ -90,6 +90,36 @@ async function loadContacts() {
     } catch { return []; }
 }
 
+async function forceLoadChats() {
+    try {
+        showToast('Carregando conversas...', 'success');
+        const response = await apiFetch('/api/whatsapp/load-chats', { method: 'POST' });
+        if (response && response.ok) {
+            const data = await response.json();
+            showToast(`${data.loaded || 0} conversas carregadas`, 'success');
+            const contacts = await loadContacts();
+            renderContacts(contacts);
+        } else {
+            showToast('Erro ao carregar conversas', 'error');
+        }
+    } catch { showToast('Erro de conexão', 'error'); }
+}
+
+async function loadChatHistoryForContact(phone) {
+    try {
+        const response = await apiFetch(`/api/whatsapp/load-chat/${encodeURIComponent(phone)}`, { method: 'POST' });
+        if (response && response.ok) {
+            const data = await response.json();
+            showToast(`${data.loaded || 0} mensagens carregadas`, 'success');
+            if (selectedContact === phone) {
+                const messages = await loadMessages(phone);
+                allMessages = messages;
+                renderMessages(messages);
+            }
+        }
+    } catch {}
+}
+
 async function loadMessages(phone) {
     try {
         let url = '/api/messages';
@@ -512,8 +542,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const contactsList = document.getElementById('contactsList');
     if (contactsList) contactsList.addEventListener('click', e => {
         const item = e.target.closest('.contact-item');
-        if (item?.dataset.phone) selectContact(item.dataset.phone);
+        if (item?.dataset.phone) {
+            selectContact(item.dataset.phone);
+            loadChatHistoryForContact(item.dataset.phone);
+        }
     });
+
+    document.getElementById('refreshChatsBtn')?.addEventListener('click', forceLoadChats);
 
     const searchInput = document.getElementById('contactSearch');
     if (searchInput) searchInput.addEventListener('input', async e => {

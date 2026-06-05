@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const CONFIG_PATH = join(__dirname, '../../config/templates.json');
+const CONFIG_PATH = join(process.env.SESSION_DIR || join(__dirname, '../../config'), 'templates.json');
 
 const DEFAULT_TEMPLATES = {
   Abandoned_Cart: {
