@@ -1,6 +1,7 @@
 node_modules/
 auth_info/
 tokens/
+data/
 .env
 *.log
 coverage/

@@ -331,7 +331,7 @@ app.post('/api/messages/read', authJWT, async (req, res) => {
       if (keys.length > 0) {
         try { await whatsappService.sock.readMessages(keys); } catch {}
       }
-      unread.forEach(m => { m.status = 'read'; });
+      unread.forEach(m => { messageStore.updateStatus(m.id, 'read'); });
     }
     res.json({ success: true, marked: unread.length });
   } catch (error) {
