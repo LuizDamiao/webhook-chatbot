@@ -197,21 +197,50 @@ app.get('/api/contacts', authJWT, (req, res) => {
   const messages = messageStore.getAll();
   const contactMap = new Map();
 
+  // Excluir o próprio número do bot
+  let botNumber = '';
+  try {
+    const rawId = whatsappService.sock?.user?.id || '';
+    botNumber = rawId.replace(':', '').replace('@s.whatsapp.net', '').replace('@lid', '');
+  } catch {}
+
   messages.forEach(msg => {
     const phone = msg.direction === 'outgoing' ? msg.to : msg.from;
-    if (phone && phone !== 'bot') {
-      if (!contactMap.has(phone)) {
-        contactMap.set(phone, {
-          phone,
-          name: msg.customerName || phone,
-          lastMessage: msg.body,
-          lastMessageTime: msg.timestamp,
-          unread: 0
-        });
-      } else {
-        const contact = contactMap.get(phone);
-        contact.lastMessage = msg.body;
-        contact.lastMessageTime = msg.timestamp;
+    if (!phone || phone === 'bot') return;
+
+    // Pular números do próprio bot
+    const cleanPhone = phone.replace('@s.whatsapp.net', '').replace('@lid', '').replace(':', '');
+    if (botNumber && cleanPhone === botNumber) return;
+
+    // Tentar normalizar: se o phone é LID, verificar se já existe contato com o mesmo nome
+    const normalizedName = (msg.customerName || '').trim().toLowerCase();
+    let contactKey = phone;
+    let merged = false;
+
+    if (normalizedName) {
+      for (const [key, existing] of contactMap) {
+        if ((existing.name || '').trim().toLowerCase() === normalizedName) {
+          contactKey = key;
+          merged = true;
+          break;
+        }
+      }
+    }
+
+    if (!contactMap.has(contactKey)) {
+      contactMap.set(contactKey, {
+        phone: contactKey,
+        name: msg.customerName || phone,
+        lastMessage: msg.body,
+        lastMessageTime: msg.timestamp,
+        unread: 0
+      });
+    } else {
+      const contact = contactMap.get(contactKey);
+      contact.lastMessage = msg.body;
+      contact.lastMessageTime = msg.timestamp;
+      if (msg.customerName && !contact.name.includes(msg.customerName)) {
+        contact.name = msg.customerName;
       }
     }
   });
