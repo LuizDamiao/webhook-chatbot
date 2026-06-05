@@ -57,6 +57,13 @@ const DEFAULT_RULES = [
   }
 ];
 
+const PHASE_KEYWORDS = {};
+for (const rule of DEFAULT_RULES) {
+  PHASE_KEYWORDS[rule.phase] = rule.trigger_keywords;
+}
+
+const HESITATION_KEYWORDS = ['não sei', 'depois', 'vou pensar', 'talvez', 'não tenho certeza'];
+
 const PERSUASION_TECHNIQUES = {
   affinity: { name: 'Afinidade', description: 'Empatia genuína com o problema da cliente', examples: ['Nossa, eu imagino como deve ser difícil...', 'Entendo sua frustração...'] },
   social_proof: { name: 'Prova Social', description: 'Mostrar que outras pessoas usam o produto', examples: ['Mais de 500 mulheres já estão cuidando', 'Muitas clientes nos relatam melhora'] },
@@ -120,28 +127,25 @@ function rowToRule(row) {
 }
 
 function identifyPhase(message, currentState) {
+  if (!message || typeof message !== 'string') return currentState.phase;
+
   const msg = message.toLowerCase();
 
-  const interestKeywords = ['dor', 'inchaço', 'perna', 'lipedema', 'sinto', 'tenho', 'problema', 'sofro'];
-  const desireKeywords = ['funciona', 'como', 'beneficio', 'resultado', 'quero saber', 'me conta mais', 'interessa'];
-  const actionKeywords = ['comprar', 'preço', 'valor', 'pagar', 'assinar', 'link', 'quero comprar', 'como assinar', 'quero começar'];
-  const hesitationKeywords = ['não sei', 'depois', 'vou pensar', 'talvez', 'não tenho certeza'];
-
   if (currentState.phase === 'attention') {
-    if (interestKeywords.some(k => msg.includes(k))) return 'interest';
+    if (PHASE_KEYWORDS.interest?.some(k => msg.includes(k))) return 'interest';
   }
 
   if (currentState.phase === 'interest') {
-    if (desireKeywords.some(k => msg.includes(k))) return 'desire';
+    if (PHASE_KEYWORDS.desire?.some(k => msg.includes(k))) return 'desire';
   }
 
   if (currentState.phase === 'desire') {
-    if (actionKeywords.some(k => msg.includes(k))) return 'action';
-    if (hesitationKeywords.some(k => msg.includes(k))) return 'desire';
+    if (PHASE_KEYWORDS.action?.some(k => msg.includes(k))) return 'action';
+    if (HESITATION_KEYWORDS.some(k => msg.includes(k))) return 'desire';
   }
 
   if (currentState.phase === 'action') {
-    if (hesitationKeywords.some(k => msg.includes(k))) return 'desire';
+    if (HESITATION_KEYWORDS.some(k => msg.includes(k))) return 'desire';
   }
 
   return currentState.phase;
@@ -181,6 +185,9 @@ export const flowEngine = {
   },
 
   addRule(phase, triggerKeywords, responseTemplate, persuasionTechniques) {
+    if (!VALID_PHASES.includes(phase)) {
+      throw new Error(`Invalid phase: ${phase}. Must be one of: ${VALID_PHASES.join(', ')}`);
+    }
     const result = stmtAddRule.run(phase, JSON.stringify(triggerKeywords), responseTemplate, JSON.stringify(persuasionTechniques));
     return stmtGetRule.get(result.lastInsertRowid);
   },
@@ -198,10 +205,15 @@ export const flowEngine = {
   },
 
   deleteRule(id) {
+    const existing = stmtGetRule.get(id);
+    if (!existing) throw new Error(`Rule not found: ${id}`);
     stmtDeleteRule.run(id);
   },
 
   trackPersuasion(phone, technique) {
+    if (!(technique in PERSUASION_TECHNIQUES)) {
+      throw new Error(`Invalid persuasion technique: ${technique}. Must be one of: ${Object.keys(PERSUASION_TECHNIQUES).join(', ')}`);
+    }
     const state = this.getConversationState(phone);
     if (state.persuasionUsed.includes(technique)) return state;
     const updated = [...state.persuasionUsed, technique];
