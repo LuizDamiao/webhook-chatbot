@@ -213,9 +213,17 @@ app.post('/api/messages/image', authJWT, async (req, res) => {
   if (!phone || !image) return res.status(400).json({ error: 'phone and image (base64) required' });
   if (!whatsappService.isConnected) return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
-    const buffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    let base64Data = image;
+    let mimetype = 'image/jpeg';
+    const match = image.match(/^data:(image\/\w+);base64,/);
+    if (match) {
+      mimetype = match[1];
+      base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    }
+    const buffer = Buffer.from(base64Data, 'base64');
     const jid = phone.includes('@') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-    const result = await whatsappService.sock.sendMessage(jid, { image: buffer, caption: caption || '' });
+    console.log(`[IMAGE] Sending to ${jid}, size: ${buffer.length} bytes, type: ${mimetype}`);
+    const result = await whatsappService.sock.sendMessage(jid, { image: buffer, caption: caption || '', mimetype });
     const stored = messageStore.add({ from: 'bot', to: phone, body: caption || '[Imagem]', direction: 'outgoing', status: 'sent', type: 'image', id: result?.key?.id });
     res.json({ success: true, message: stored });
   } catch (error) {

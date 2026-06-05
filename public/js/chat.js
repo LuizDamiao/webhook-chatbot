@@ -506,12 +506,20 @@ async function handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file || !selectedContact) return;
     const type = e.target.dataset.sendType || 'document';
+
+    if (type === 'image' && file.size > 5 * 1024 * 1024) {
+        showToast('Imagem muito grande (máx 5MB)', 'error');
+        e.target.value = '';
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = async () => {
+        const base64 = reader.result;
         const endpoint = type === 'image' ? '/api/messages/image' : '/api/messages/document';
         const body = type === 'image'
-            ? { phone: selectedContact, image: reader.result, caption: '' }
-            : { phone: selectedContact, file: reader.result, fileName: file.name, mimeType: file.type };
+            ? { phone: selectedContact, image: base64, caption: '' }
+            : { phone: selectedContact, file: base64, fileName: file.name, mimeType: file.type || 'application/octet-stream' };
         showToast(`Enviando ${type === 'image' ? 'imagem' : 'arquivo'}...`, 'success');
         const res = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(body) });
         if (res && res.ok) {
