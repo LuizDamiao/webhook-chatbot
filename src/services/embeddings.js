@@ -20,7 +20,7 @@ export async function generateEmbedding(text) {
     throw new Error('GEMINI_API_KEY environment variable is not set');
   }
 
-  const response = await fetch(
+  let response = await fetch(
     `${API_URL}?key=${apiKey}`,
     {
       method: 'POST',
@@ -32,13 +32,37 @@ export async function generateEmbedding(text) {
     }
   );
 
+  if (response.status === 429) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    response = await fetch(
+      `${API_URL}?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'models/text-embedding-004',
+          content: { parts: [{ text }] }
+        })
+      }
+    );
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded');
+    }
+  }
+
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Gemini API error (${response.status}): ${error}`);
   }
 
   const data = await response.json();
-  return new Float32Array(data.embedding.values);
+  const values = data.embedding.values;
+
+  if (!Array.isArray(values) || values.length !== 768) {
+    throw new Error(`Expected 768 dimensions but got ${values ? values.length : 0}`);
+  }
+
+  return new Float32Array(values);
 }
 
 export function embeddingToBuffer(embedding) {
