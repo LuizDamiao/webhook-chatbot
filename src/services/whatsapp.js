@@ -172,7 +172,7 @@ export class WhatsAppService {
       const isGroup = chatId.includes('@g.us');
       if (isGroup) return;
 
-      const phone = chatId.replace('@c.us', '').replace('@s.whatsapp.net', '');
+      const phone = chatId.replace('@c.us', '').replace('@s.whatsapp.net', '').replace('@lid', '');
       const fromMe = msg.key.fromMe;
 
       const text = msg.message?.conversation
@@ -209,34 +209,42 @@ export class WhatsAppService {
       console.log(`[${fromMe ? 'OUT' : 'IN'}] ${phone}: ${text.substring(0, 50)}`);
 
       if (!fromMe) {
-        this._handleAIResponse(phone, text);
+        this._handleAIResponse(phone, text, chatId);
       }
     } catch (err) {
       console.error('[WA] Message error:', err.message);
     }
   }
 
-  async _handleAIResponse(phone, message) {
+  async _handleAIResponse(phone, message, chatId) {
     try {
       const { processMessage, isEnabled } = await import('./aiAgent.js');
 
-      if (!isEnabled()) return;
+      if (!isEnabled()) {
+        console.log(`[AI] Agent disabled, ignoring message from ${phone}`);
+        return;
+      }
 
-      console.log(`[AI] Processing message from ${phone}...`);
+      console.log(`[AI] Processing message from ${phone}: ${message.substring(0, 50)}...`);
       const result = await processMessage(phone, message);
 
       if (result && result.response) {
-        // Build correct JID based on phone format
-        const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
-        await this.sock.sendMessage(jid, { text: result.response });
-        console.log(`[AI] Sent response to ${phone} (phase: ${result.phase}, confidence: ${result.confidence})`);
+        const jid = chatId || (phone.includes('@') ? phone : `${phone}@s.whatsapp.net`);
+        try {
+          await this.sock.sendMessage(jid, { text: result.response });
+          console.log(`[AI] ✅ Sent response to ${phone} (phase: ${result.phase}, confidence: ${result.confidence})`);
+        } catch (sendErr) {
+          console.error(`[AI] Failed to send response to ${phone}: ${sendErr.message}`);
+        }
 
         if (result.needsHuman) {
           console.log(`[AI] ⚠️ Needs human attention for ${phone}`);
         }
+      } else {
+        console.log(`[AI] No response generated for ${phone}`);
       }
     } catch (error) {
-      console.error('[AI] Error processing message:', error.message);
+      console.error(`[AI] Error in _handleAIResponse for ${phone}:`, error.message);
     }
   }
 

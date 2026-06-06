@@ -42,8 +42,13 @@ export async function addChunk(category, aidaPhase, content) {
     throw new Error('content must be a non-empty string');
   }
 
-  const embedding = await generateEmbedding(content);
-  const embeddingBuffer = embeddingToBuffer(embedding);
+  let embeddingBuffer = null;
+  try {
+    const embedding = await generateEmbedding(content);
+    embeddingBuffer = embeddingToBuffer(embedding);
+  } catch (err) {
+    console.error(`[KNOWLEDGE] Embedding failed for chunk, saving without vector: ${err.message}`);
+  }
 
   const result = stmtInsert.run(category, aidaPhase, content, embeddingBuffer);
 
@@ -57,32 +62,39 @@ export async function addChunk(category, aidaPhase, content) {
 
 export async function searchChunks(query, limit = 3) {
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
-    throw new Error('query must be a non-empty string');
+    return [];
   }
 
-  const queryEmbedding = await generateEmbedding(query);
   const allChunks = stmtGetAll.all();
+  if (allChunks.length === 0) return [];
 
-  const results = allChunks.map(chunk => {
-    const chunkEmbedding = chunk.embedding
-      ? bufferToEmbedding(Buffer.from(chunk.embedding))
-      : null;
+  try {
+    const queryEmbedding = await generateEmbedding(query);
 
-    if (!chunkEmbedding) {
-      return { ...chunk, score: 0 };
-    }
+    const results = allChunks.map(chunk => {
+      const chunkEmbedding = chunk.embedding
+        ? bufferToEmbedding(Buffer.from(chunk.embedding))
+        : null;
 
-    const score = cosineSimilarity(queryEmbedding, chunkEmbedding);
-    return { ...chunk, score };
-  });
+      if (!chunkEmbedding) {
+        return { ...chunk, score: 0 };
+      }
 
-  results.sort((a, b) => b.score - a.score);
+      const score = cosineSimilarity(queryEmbedding, chunkEmbedding);
+      return { ...chunk, score };
+    });
 
-  return results.slice(0, limit);
+    results.sort((a, b) => b.score - a.score);
+
+    return results.slice(0, limit);
+  } catch (err) {
+    console.error(`[KNOWLEDGE] Search failed, returning all chunks without ranking: ${err.message}`);
+    return allChunks.slice(0, limit).map(c => ({ ...c, score: 0 }));
+  }
 }
 
 export function deleteChunk(id) {
-  if (!id && id !== 0) {
+  if (id === undefined || id === null) {
     throw new Error('id is required');
   }
   return stmtDelete.run(id);

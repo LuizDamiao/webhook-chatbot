@@ -12,6 +12,8 @@ const MAX_SUGGESTIONS = 2;
 const DEFAULT_CONFIDENCE = 0.8;
 const CONFIDENCE_PER_CHUNK = 0.05;
 const MAX_CONFIDENCE = 0.95;
+const GEMINI_RETRIES = 2;
+const GEMINI_RETRY_DELAY_MS = 2000;
 
 const DB_DIR = fs.existsSync('/data') ? '/data' : path.join(process.cwd(), 'data');
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
@@ -60,6 +62,13 @@ REGRAS:
 6. Use prova social quando possível
 7. Ancore o preço em custo diário`;
 
+const FALLBACK_RESPONSES = {
+  attention: 'Oi! Tudo bem? 😊 Sou a Carina, da LipedemaCare! Como posso te ajudar hoje?',
+  interest: 'Entendo! O lipedema pode ser bem difícil de lidar. Me conta mais sobre o que você sente? 💚',
+  desire: 'O LipedemaCare pode te ajudar muito! São videoaulas, exercícios guiados e uma comunidade de mulheres que entendem o que você passa. Quer saber mais? 😊',
+  action: 'O plano custa apenas R$37,90/mês — menos de R$1,30 por dia! Você pode cancelar a qualquer hora, sem multa. Quer que eu te envie o link? 💚'
+};
+
 const stmtGetConfig = db.prepare('SELECT value FROM ai_config WHERE key = ?');
 const stmtSetConfig = db.prepare('INSERT OR REPLACE INTO ai_config (key, value) VALUES (?, ?)');
 const stmtInsertNotification = db.prepare('INSERT INTO ai_notifications (phone, message, reason) VALUES (?, ?, ?)');
@@ -89,7 +98,11 @@ export function resolveNotification(id) {
 }
 
 function createNotification(phone, message, reason) {
-  stmtInsertNotification.run(phone, message, reason);
+  try {
+    stmtInsertNotification.run(phone, message, reason);
+  } catch (err) {
+    console.error('[AI] Failed to create notification:', err.message);
+  }
 }
 
 function buildPrompt({ systemPrompt, knowledgeContext, phase, persuasionSuggestions, message, history }) {
@@ -104,94 +117,162 @@ TÉCNICAS DE PERSUASÃO SUGERIDAS:
 ${persuasionSuggestions.join(', ') || 'Nenhuma'}
 
 HISTÓRICO DA CONVERSA:
-${history}
+${history || '(Início de conversa)'}
 
 MENSAGEM DO CLIENTE: ${message}
 
-Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Aplique as técnicas de persuasão de forma orgânica (não force).`;
+Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Aplique as técnicas de persuasão de forma orgânica (não force). Responda em português brasileiro.`;
 }
 
 async function callGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+  let lastError = null;
 
-  try {
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-            topP: 0.8,
-            topK: 40
-          }
-        }),
-        signal: controller.signal
+  for (let attempt = 0; attempt <= GEMINI_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+    try {
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+              topP: 0.8,
+              topK: 40
+            }
+          }),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = new Error(`Gemini API error (${response.status}): ${errorText}`);
+        console.error(`[AI] Gemini attempt ${attempt + 1} failed: ${lastError.message}`);
+
+        if (attempt < GEMINI_RETRIES) {
+          await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS));
+          continue;
+        }
+        throw lastError;
       }
-    );
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Gemini API error: ${error}`);
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        throw new Error('Gemini returned empty response');
+      }
+      return text;
+    } catch (error) {
+      clearTimeout(timeout);
+
+      if (error.name === 'AbortError') {
+        lastError = new Error('Gemini API timeout');
+        console.error(`[AI] Gemini attempt ${attempt + 1} timed out`);
+        if (attempt < GEMINI_RETRIES) {
+          await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS));
+          continue;
+        }
+        throw lastError;
+      }
+
+      lastError = error;
+      if (attempt < GEMINI_RETRIES) {
+        console.error(`[AI] Gemini attempt ${attempt + 1} error: ${error.message}, retrying...`);
+        await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS));
+        continue;
+      }
+      throw lastError;
     }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Desculpe, não consegui gerar uma resposta.';
-  } catch (error) {
-    if (error.name === 'AbortError') throw new Error('Gemini API timeout');
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  throw lastError || new Error('Gemini failed after retries');
 }
 
 async function getRecentHistory(phone, count) {
-  const messages = messageStore.getByPhone(phone);
-  return messages.slice(-count).map(m =>
-    `${m.direction === 'incoming' ? 'Cliente' : 'Bot'}: ${m.body}`
-  ).join('\n');
+  try {
+    const messages = messageStore.getByPhone(phone);
+    return messages.slice(-count).map(m =>
+      `${m.direction === 'incoming' ? 'Cliente' : 'Bot'}: ${m.body}`
+    ).join('\n');
+  } catch (err) {
+    console.error(`[AI] Failed to get history for ${phone}: ${err.message}`);
+    return '';
+  }
 }
 
 function checkNeedsHuman(response) {
+  if (!response) return false;
   const indicators = ['não sei', 'verificar com a equipe', 'não tenho certeza', 'transferir', 'atendente'];
   return indicators.some(indicator => response.toLowerCase().includes(indicator));
 }
 
+function getFallbackResponse(phase) {
+  return FALLBACK_RESPONSES[phase] || FALLBACK_RESPONSES.attention;
+}
+
 export async function processMessage(phone, message) {
   if (typeof phone !== 'string' || phone.trim().length === 0) {
-    console.error('Invalid phone:', phone);
+    console.error('[AI] Invalid phone:', phone);
     return null;
   }
   if (typeof message !== 'string' || message.trim().length === 0) {
-    console.error('Invalid message:', message);
+    console.error('[AI] Invalid message:', message);
     return null;
   }
 
-  if (!isEnabled()) return null;
+  if (!isEnabled()) {
+    console.log('[AI] Agent disabled, skipping');
+    return null;
+  }
 
   try {
-    let state = flowEngine.getConversationState(phone);
-
-    const newPhase = flowEngine.identifyPhase(message, state);
-    if (newPhase !== state.phase) {
-      flowEngine.advancePhase(phone, newPhase);
+    let state;
+    try {
       state = flowEngine.getConversationState(phone);
+    } catch (err) {
+      console.error(`[AI] FlowEngine state error: ${err.message}`);
+      state = { phone, phase: 'attention', persuasionUsed: [], messageCount: 0 };
     }
 
-    const relevantChunks = await searchChunks(message, TOP_K_CHUNKS);
+    let newPhase = state.phase;
+    try {
+      newPhase = flowEngine.identifyPhase(message, state);
+      if (newPhase !== state.phase) {
+        flowEngine.advancePhase(phone, newPhase);
+        state = flowEngine.getConversationState(phone);
+      }
+    } catch (err) {
+      console.error(`[AI] FlowEngine phase error: ${err.message}`);
+    }
 
-    const usedTechniques = state.persuasionUsed || [];
-    const suggestions = flowEngine.getPersuasionSuggestions(newPhase, usedTechniques);
+    let relevantChunks = [];
+    try {
+      relevantChunks = await searchChunks(message, TOP_K_CHUNKS);
+    } catch (err) {
+      console.error(`[AI] Knowledge search error: ${err.message}`);
+    }
+
+    let suggestions = [];
+    try {
+      const usedTechniques = state.persuasionUsed || [];
+      suggestions = flowEngine.getPersuasionSuggestions(newPhase, usedTechniques);
+    } catch (err) {
+      console.error(`[AI] Persuasion suggestions error: ${err.message}`);
+    }
 
     const systemPrompt = getConfig('system_prompt') || DEFAULT_SYSTEM_PROMPT;
     const knowledgeContext = relevantChunks.map(c => c.content).join('\n\n');
@@ -205,15 +286,25 @@ export async function processMessage(phone, message) {
       history: await getRecentHistory(phone, MAX_HISTORY_MESSAGES)
     });
 
-    const geminiResponse = await callGemini(prompt);
+    let geminiResponse;
+    try {
+      geminiResponse = await callGemini(prompt);
+    } catch (err) {
+      console.error(`[AI] Gemini failed for ${phone}: ${err.message}`);
+      geminiResponse = getFallbackResponse(newPhase);
+    }
 
     const needsHuman = checkNeedsHuman(geminiResponse);
     if (needsHuman) {
       createNotification(phone, message, 'AI could not handle this message');
     }
 
-    if (suggestions.length > 0) {
-      flowEngine.trackPersuasion(phone, suggestions[0].name || suggestions[0]);
+    try {
+      if (suggestions.length > 0) {
+        flowEngine.trackPersuasion(phone, suggestions[0].name || suggestions[0]);
+      }
+    } catch (err) {
+      console.error(`[AI] trackPersuasion error: ${err.message}`);
     }
 
     const confidence = relevantChunks.length > 0
@@ -237,8 +328,29 @@ export async function processMessage(phone, message) {
       needsHuman
     };
   } catch (error) {
-    console.error(`aiAgent.processMessage failed for ${phone}:`, error);
-    return null;
+    console.error(`[AI] processMessage CRITICAL failure for ${phone}:`, error.message);
+
+    const fallback = getFallbackResponse('attention');
+    try {
+      messageStore.add({
+        from: 'bot',
+        to: phone,
+        body: fallback,
+        direction: 'outgoing',
+        status: 'sent',
+        type: 'text',
+        customerName: 'AI'
+      });
+    } catch (e) {
+      console.error('[AI] Failed to store fallback message:', e.message);
+    }
+
+    return {
+      response: fallback,
+      phase: 'attention',
+      confidence: 0.5,
+      needsHuman: false
+    };
   }
 }
 

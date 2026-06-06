@@ -178,4 +178,31 @@ router.post('/api/ai/seed', async (req, res) => {
   res.json({ success: true, added, errors, total: KNOWLEDGE_DATA.length });
 });
 
+// Test endpoint - send a test message through AI agent
+router.post('/api/ai/test', async (req, res) => {
+  const { message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'message is required' });
+  }
+
+  const testPhone = 'test_' + Date.now();
+  console.log(`[AI TEST] Testing with message: ${message}`);
+
+  try {
+    const result = await aiAgent.processMessage(testPhone, message);
+    res.json({
+      success: true,
+      result: {
+        response: result?.response || null,
+        phase: result?.phase || null,
+        confidence: result?.confidence || null,
+        needsHuman: result?.needsHuman || false
+      }
+    });
+  } catch (error) {
+    console.error('[AI TEST] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
