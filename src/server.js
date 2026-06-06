@@ -95,6 +95,7 @@ app.post('/api/auth', authLimiter, async (req, res) => {
 
 // API: Server and WhatsApp status
 app.get('/api/status', authJWT, (req, res) => {
+  const reconnectMetrics = whatsappService.getReconnectMetrics ? whatsappService.getReconnectMetrics() : {};
   res.json({
     server: {
       status: 'online',
@@ -105,7 +106,8 @@ app.get('/api/status', authJWT, (req, res) => {
       connected: whatsappService.isConnected,
       hasQRCode: !!whatsappService.getQRCode(),
       pairingCode: whatsappService.getPairingCode(),
-      sessionDir: SESSION_DIR
+      sessionDir: SESSION_DIR,
+      ...reconnectMetrics
     },
     messages: getStats()
   });

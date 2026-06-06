@@ -19,6 +19,10 @@ export function formatPhone(phone) {
   return cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
 }
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_DELAY_MS = 1000;
+const MAX_DELAY_MS = 60000;
+
 export class WhatsAppService {
   constructor(sessionDir) {
     this.sessionDir = sessionDir || './auth_info';
@@ -27,6 +31,11 @@ export class WhatsAppService {
     this.qrCode = null;
     this.pairingCode = null;
     this._started = false;
+    this._reconnectTimer = null;
+    this._reconnectAttempts = 0;
+    this._isReconnecting = false;
+    this.lastConnectedAt = null;
+    this.totalReconnects = 0;
   }
 
   async connect() {
@@ -74,6 +83,13 @@ export class WhatsAppService {
           console.log('[WA] WhatsApp connected');
           this.isConnected = true;
           this.qrCode = null;
+          this._reconnectAttempts = 0;
+          this._isReconnecting = false;
+          this.lastConnectedAt = new Date().toISOString();
+          if (this._reconnectTimer) {
+            clearTimeout(this._reconnectTimer);
+            this._reconnectTimer = null;
+          }
           setTimeout(() => this._loadAllHistory(), 3000);
         }
 
@@ -84,17 +100,7 @@ export class WhatsAppService {
           this.isConnected = false;
           this._started = false;
 
-          if (statusCode === DisconnectReason.loggedOut) {
-            console.log('[WA] Session logged out, clearing files...');
-            this._clearSession();
-          } else if (statusCode === 405 || statusCode === 401 || statusCode === 408) {
-            console.log(`[WA] Error ${statusCode}, clearing session and reconnecting...`);
-            this._clearSession();
-            setTimeout(() => this.connect(), 5000);
-          } else {
-            console.log('[WA] Reconnecting in 5s...');
-            setTimeout(() => this.connect(), 5000);
-          }
+          this._handleDisconnect(statusCode);
         }
       });
 
@@ -164,6 +170,97 @@ export class WhatsAppService {
     } catch (err) {
       console.error('[WA] Error clearing session:', err.message);
     }
+  }
+
+  _handleDisconnect(statusCode) {
+    const reason = DisconnectReason;
+
+    switch (statusCode) {
+      case reason.loggedOut:
+        console.log('[WA] Session logged out (401). Clearing session. Manual re-pair required.');
+        this._clearSession();
+        break;
+
+      case reason.badSession:
+        console.log('[WA] Bad session (500). Clearing session. Manual re-pair required.');
+        this._clearSession();
+        break;
+
+      case reason.connectionReplaced:
+        console.log('[WA] Connection replaced (440) - another device logged in.');
+        this._clearSession();
+        break;
+
+      case reason.forbidden:
+        console.log('[WA] Connection forbidden (403). Not reconnecting. Check WhatsApp account status.');
+        break;
+
+      case reason.multideviceMismatch:
+        console.log('[WA] Multi-device mismatch (411). Not reconnecting. Configuration issue.');
+        break;
+
+      case reason.connectionClosed:
+      case reason.connectionLost:
+      case reason.timedOut:
+      case reason.unavailableService:
+        console.log(`[WA] Transient error (${statusCode}). Reconnecting with backoff...`);
+        this._reconnectWithBackoff();
+        break;
+
+      case reason.restartRequired:
+        console.log('[WA] Server requires restart (515). Reconnecting immediately...');
+        this._reconnectWithBackoff(1000);
+        break;
+
+      default:
+        console.log(`[WA] Unknown disconnect code (${statusCode}). Reconnecting with backoff...`);
+        this._reconnectWithBackoff();
+    }
+  }
+
+  _reconnectWithBackoff(minDelayMs) {
+    if (this._isReconnecting) {
+      console.log('[WA] Reconnection already in progress, skipping...');
+      return;
+    }
+
+    if (this._reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      console.error(`[WA] Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Manual intervention required.`);
+      console.error('[WA] Use POST /api/whatsapp/reset to reset session and re-pair.');
+      return;
+    }
+
+    this._isReconnecting = true;
+    this._reconnectAttempts++;
+    this.totalReconnects++;
+
+    const baseDelay = minDelayMs || Math.min(BASE_DELAY_MS * Math.pow(2, this._reconnectAttempts - 1), MAX_DELAY_MS);
+    const jitter = Math.floor(Math.random() * baseDelay * 0.3);
+    const delay = baseDelay + jitter;
+
+    console.log(`[WA] Reconnect attempt ${this._reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${Math.round(delay / 1000)}s...`);
+
+    this._reconnectTimer = setTimeout(async () => {
+      this._isReconnecting = false;
+      this._reconnectTimer = null;
+      try {
+        await this.connect();
+      } catch (err) {
+        console.error(`[WA] Reconnect attempt ${this._reconnectAttempts} failed: ${err.message}`);
+        this._isReconnecting = false;
+        this._reconnectWithBackoff();
+      }
+    }, delay);
+  }
+
+  getReconnectMetrics() {
+    return {
+      isConnected: this.isConnected,
+      lastConnectedAt: this.lastConnectedAt,
+      reconnectAttempts: this._reconnectAttempts,
+      maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+      totalReconnects: this.totalReconnects
+    };
   }
 
   _processMessage(msg) {
@@ -346,7 +443,13 @@ export class WhatsAppService {
   }
 
   resetSession() {
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
     this._started = false;
+    this._isReconnecting = false;
+    this._reconnectAttempts = 0;
     this.isConnected = false;
     this.qrCode = null;
     this.sock = null;
