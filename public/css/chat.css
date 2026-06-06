@@ -680,7 +680,7 @@ body {
 
 .admin-section {
   padding: 24px;
-  max-width: 800px;
+  max-width: 900px;
 }
 
 .admin-section h2 {
@@ -696,50 +696,36 @@ body {
   gap: 8px;
 }
 
-.config-row {
+/* Toggle row - full width, vertical layout */
+.toggle-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 16px;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 20px;
   background: var(--bg-panel);
   border-radius: 12px;
   border: 1px solid var(--border);
 }
 
-.config-row label:first-child {
+.toggle-row .toggle-label {
   font-weight: 500;
-  min-width: 120px;
-}
-
-.config-row textarea {
-  flex: 1;
-  padding: 10px 14px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 0.9rem;
-  font-family: inherit;
-  resize: vertical;
-}
-
-.config-row textarea:focus {
-  outline: none;
-  border-color: var(--accent);
+  font-size: 1rem;
 }
 
 #aiStatus {
   font-weight: 500;
   color: var(--text-secondary);
+  margin-left: 8px;
 }
 
 .toggle-switch {
   position: relative;
   display: inline-block;
-  width: 48px;
-  height: 24px;
+  width: 52px;
+  height: 28px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -755,7 +741,7 @@ body {
   right: 0;
   bottom: 0;
   background: var(--bg-input);
-  border-radius: 24px;
+  border-radius: 28px;
   transition: 0.3s;
   border: 1px solid var(--border);
 }
@@ -763,8 +749,8 @@ body {
 .toggle-slider:before {
   content: "";
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   left: 2px;
   bottom: 2px;
   background: var(--text-secondary);
@@ -782,15 +768,55 @@ body {
   background: #fff;
 }
 
-.knowledge-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 16px;
+/* Prompt section - full width */
+.prompt-section {
+  margin-bottom: 24px;
+  padding: 20px;
   background: var(--bg-panel);
   border-radius: 12px;
   border: 1px solid var(--border);
+}
+
+.prompt-section label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.prompt-section textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.prompt-section textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Knowledge form - grid layout */
+.knowledge-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: var(--bg-panel);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.knowledge-form textarea {
+  grid-column: 1 / -1;
+  min-height: 80px;
 }
 
 .knowledge-form select,
@@ -809,30 +835,41 @@ body {
   border-color: var(--accent);
 }
 
+/* Knowledge items */
 .knowledge-item, .notification-item, .rule-item {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.knowledge-item .knowledge-badges {
+  display: flex;
+  gap: 6px;
+  width: 100%;
 }
 
 .knowledge-badge {
   display: inline-block;
   background: #2d6a4f;
   color: #95d5b2;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 4px;
   font-size: 0.8em;
-  margin-right: 4px;
 }
 
 .knowledge-item p,
 .notification-item p,
 .rule-item p {
-  margin: 8px 0 4px;
+  margin: 4px 0;
   font-size: 0.9rem;
-  line-height: 1.4;
+  line-height: 1.5;
+  width: 100%;
 }
 
 .notification-item small {
@@ -840,6 +877,7 @@ body {
   color: var(--text-secondary);
   font-size: 0.8rem;
   margin-bottom: 8px;
+  width: 100%;
 }
 
 .btn-delete {
@@ -851,7 +889,7 @@ body {
   cursor: pointer;
   font-size: 0.85rem;
   transition: all 0.2s;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .btn-delete:hover {

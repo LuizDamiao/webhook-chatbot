@@ -102,20 +102,20 @@
                     <h2>🤖 AI Agent</h2>
                     
                     <!-- Toggle -->
-                    <div class="config-row">
-                        <label>Agente IA:</label>
+                    <div class="toggle-row">
                         <label class="toggle-switch">
                             <input type="checkbox" id="aiEnabled">
                             <span class="toggle-slider"></span>
                         </label>
+                        <span class="toggle-label">Agente IA</span>
                         <span id="aiStatus">Desligado</span>
                     </div>
 
                     <!-- System Prompt -->
-                    <div class="config-row">
-                        <label>System Prompt:</label>
-                        <textarea id="aiSystemPrompt" rows="6" placeholder="Prompt do agente..."></textarea>
-                        <button class="btn-save" id="saveAiPrompt">Salvar Prompt</button>
+                    <div class="prompt-section">
+                        <label for="aiSystemPrompt">System Prompt</label>
+                        <textarea id="aiSystemPrompt" rows="8" placeholder="Prompt do agente..."></textarea>
+                        <button class="btn-save" id="saveAiPrompt" style="margin-top: 12px;">Salvar Prompt</button>
                     </div>
 
                     <!-- Knowledge Base -->
@@ -137,7 +137,7 @@
                             <option value="desire">Desejo (D)</option>
                             <option value="action">Ação (A)</option>
                         </select>
-                        <textarea id="knowledgeContent" rows="3" placeholder="Conteúdo do conhecimento..."></textarea>
+                        <textarea id="knowledgeContent" rows="4" placeholder="Conteúdo do conhecimento..."></textarea>
                         <button class="btn-save" id="addKnowledge">Adicionar</button>
                     </div>
                     <div id="knowledgeList"></div>
