@@ -643,11 +643,11 @@ const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Webhook endpoint: http://localhost:${PORT}/webhook`);
   console.log(`Health check: http://localhost:${PORT}/health`);
-  // Auto-seed knowledge base if GEMINI_API_KEY is set
-  if (process.env.GEMINI_API_KEY) {
+  // Auto-seed knowledge base if GROQ_API_KEY is set
+  if (process.env.GROQ_API_KEY) {
     autoSeedKnowledge();
   } else {
-    console.log('[SEED] GEMINI_API_KEY not set, skipping knowledge base seed');
+    console.log('[SEED] GROQ_API_KEY not set, skipping knowledge base seed');
   }
 });
 

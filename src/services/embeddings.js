@@ -1,6 +1,6 @@
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
+const API_URL = 'https://api.opentextembeddings.com/v1/embeddings';
 const RETRY_DELAY_MS = 1000;
-const EMBEDDING_DIMENSIONS = 3072;
+const EMBEDDING_DIMENSIONS = 1024;
 const BYTES_PER_FLOAT = 4;
 const FETCH_TIMEOUT_MS = 30000;
 const RATE_LIMIT_STATUS = 429;
@@ -17,18 +17,19 @@ export function cosineSimilarity(a, b) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-async function fetchEmbedding(text, apiKey) {
+async function fetchEmbedding(text) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(
-      `${API_URL}?key=${apiKey}`,
+      API_URL,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: { parts: [{ text }] }
+          model: 'bge-large-en',
+          input: text
         }),
         signal: controller.signal
       }
@@ -36,9 +37,9 @@ async function fetchEmbedding(text, apiKey) {
     return response;
   } catch (error) {
     if (error.name === 'AbortError') {
-      throw new Error('Gemini API request timed out');
+      throw new Error('Embedding API request timed out');
     }
-    throw new Error(`Network error calling Gemini API: ${error.message}`);
+    throw new Error(`Network error calling Embedding API: ${error.message}`);
   } finally {
     clearTimeout(timeoutId);
   }
@@ -49,16 +50,11 @@ export async function generateEmbedding(text) {
     throw new Error('Text must be a non-empty string');
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY environment variable is not set');
-  }
-
-  let response = await fetchEmbedding(text, apiKey);
+  let response = await fetchEmbedding(text);
 
   if (response.status === RATE_LIMIT_STATUS) {
     await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-    response = await fetchEmbedding(text, apiKey);
+    response = await fetchEmbedding(text);
     if (response.status === RATE_LIMIT_STATUS) {
       throw new Error('Rate limit exceeded');
     }
@@ -66,11 +62,11 @@ export async function generateEmbedding(text) {
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${error}`);
+    throw new Error(`Embedding API error (${response.status}): ${error}`);
   }
 
   const data = await response.json();
-  const values = data.embedding.values;
+  const values = data.data?.[0]?.embedding;
 
   if (!Array.isArray(values) || values.length !== EMBEDDING_DIMENSIONS) {
     throw new Error(`Expected ${EMBEDDING_DIMENSIONS} dimensions but got ${values ? values.length : 0}`);

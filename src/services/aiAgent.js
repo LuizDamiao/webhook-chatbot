@@ -124,9 +124,9 @@ MENSAGEM DO CLIENTE: ${message}
 Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Aplique as técnicas de persuasão de forma orgânica (não force). Responda em português brasileiro.`;
 }
 
-async function callGemini(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+async function callLLM(prompt) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY not set');
 
   let lastError = null;
 
@@ -136,21 +136,19 @@ async function callGemini(prompt) {
 
     try {
       const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+        'https://api.groq.com/openai/v1/chat/completions',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
+            'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1024,
-              topP: 0.8,
-              topK: 40
-            }
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 1024,
+            top_p: 0.8
           }),
           signal: controller.signal
         }
@@ -160,8 +158,8 @@ async function callGemini(prompt) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        lastError = new Error(`Gemini API error (${response.status}): ${errorText}`);
-        console.error(`[AI] Gemini attempt ${attempt + 1} failed: ${lastError.message}`);
+        lastError = new Error(`Groq API error (${response.status}): ${errorText}`);
+        console.error(`[AI] Groq attempt ${attempt + 1} failed: ${lastError.message}`);
 
         if (attempt < GEMINI_RETRIES) {
           await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS));
@@ -171,17 +169,17 @@ async function callGemini(prompt) {
       }
 
       const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const text = data.choices?.[0]?.message?.content;
       if (!text) {
-        throw new Error('Gemini returned empty response');
+        throw new Error('Groq returned empty response');
       }
       return text;
     } catch (error) {
       clearTimeout(timeout);
 
       if (error.name === 'AbortError') {
-        lastError = new Error('Gemini API timeout');
-        console.error(`[AI] Gemini attempt ${attempt + 1} timed out`);
+        lastError = new Error('Groq API timeout');
+        console.error(`[AI] Groq attempt ${attempt + 1} timed out`);
         if (attempt < GEMINI_RETRIES) {
           await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS));
           continue;
@@ -191,7 +189,7 @@ async function callGemini(prompt) {
 
       lastError = error;
       if (attempt < GEMINI_RETRIES) {
-        console.error(`[AI] Gemini attempt ${attempt + 1} error: ${error.message}, retrying...`);
+        console.error(`[AI] Groq attempt ${attempt + 1} error: ${error.message}, retrying...`);
         await new Promise(r => setTimeout(r, GEMINI_RETRY_DELAY_MS));
         continue;
       }
@@ -199,7 +197,7 @@ async function callGemini(prompt) {
     }
   }
 
-  throw lastError || new Error('Gemini failed after retries');
+  throw lastError || new Error('Groq failed after retries');
 }
 
 async function getRecentHistory(phone, count) {
@@ -288,9 +286,9 @@ export async function processMessage(phone, message) {
 
     let geminiResponse;
     try {
-      geminiResponse = await callGemini(prompt);
+      geminiResponse = await callLLM(prompt);
     } catch (err) {
-      console.error(`[AI] Gemini failed for ${phone}: ${err.message}`);
+      console.error(`[AI] Groq failed for ${phone}: ${err.message}`);
       geminiResponse = getFallbackResponse(newPhase);
     }
 

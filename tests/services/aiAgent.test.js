@@ -28,7 +28,7 @@ describe('AiAgent', () => {
     messageStore.clear();
     mockFetch.mockReset();
     searchChunks.mockResolvedValue([]);
-    process.env.GEMINI_API_KEY = 'test-api-key';
+    process.env.GROQ_API_KEY = 'test-api-key';
     setConfig('enabled', 'true');
   });
 
@@ -71,7 +71,7 @@ describe('AiAgent', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Olá! Como posso ajudar?' }] } }]
+          choices: [{ message: { content: 'Olá! Como posso ajudar?' } }]
         })
       });
 
@@ -86,7 +86,7 @@ describe('AiAgent', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Entendo sua dor.' }] } }]
+          choices: [{ message: { content: 'Entendo sua dor.' } }]
         })
       });
 
@@ -98,7 +98,7 @@ describe('AiAgent', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Deixa eu verificar com a equipe.' }] } }]
+          choices: [{ message: { content: 'Deixa eu verificar com a equipe.' } }]
         })
       });
 
@@ -110,7 +110,7 @@ describe('AiAgent', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Não tenho certeza.' }] } }]
+          choices: [{ message: { content: 'Não tenho certeza.' } }]
         })
       });
 
@@ -119,17 +119,20 @@ describe('AiAgent', () => {
       expect(notifications.length).toBe(1);
     });
 
-    it('should return null when GEMINI_API_KEY not set', async () => {
-      delete process.env.GEMINI_API_KEY;
+    it('should return fallback response when GROQ_API_KEY not set', async () => {
+      delete process.env.GROQ_API_KEY;
       const result = await processMessage('5511999999999', 'Olá');
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result.response).toBe('Oi! Tudo bem? 😊 Sou a Carina, da LipedemaCare! Como posso te ajudar hoje?');
+      expect(result.phase).toBe('attention');
+      expect(result.needsHuman).toBe(false);
     });
 
     it('should store AI response in messageStore', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Resposta testada' }] } }]
+          choices: [{ message: { content: 'Resposta testada' } }]
         })
       });
 
@@ -148,7 +151,7 @@ describe('AiAgent', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Transferir' }] } }]
+          choices: [{ message: { content: 'Transferir' } }]
         })
       });
 
