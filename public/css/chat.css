@@ -677,52 +677,51 @@ body {
 /* ─── AI Agent Tab ──────────────────────────────────── */
 .tab-content { display: contents; }
 .tab-content[style*="display:none"] { display: none !important; }
-#tab-ai { grid-column: 1 / -1; display: block !important; }
+#tab-ai { grid-column: 1 / -1; display: block !important; overflow-y: auto; }
 #tab-ai[style*="display:none"] { display: none !important; }
 
-.admin-section {
+.ai-layout {
   padding: 24px;
   width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+  min-height: 100%;
 }
 
-.admin-section h2 {
-  font-size: 1.3rem;
+.ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 24px;
 }
 
-.admin-section h3 {
-  font-size: 1.05rem;
-  margin: 24px 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.ai-header h2 {
+  font-size: 1.4rem;
+  margin: 0;
 }
 
-/* Toggle row - full width, vertical layout */
-.toggle-row {
+.ai-header-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 20px;
+  gap: 12px;
+  padding: 12px 20px;
   background: var(--bg-panel);
   border-radius: 12px;
   border: 1px solid var(--border);
 }
 
-.toggle-row .toggle-label {
+.ai-header-controls .toggle-label {
   font-weight: 500;
-  font-size: 1rem;
 }
 
-#aiStatus {
+.ai-status-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
   font-weight: 500;
+  background: var(--bg-input);
   color: var(--text-secondary);
-  margin-left: 8px;
 }
 
+/* Toggle switch */
 .toggle-switch {
   position: relative;
   display: inline-block;
@@ -740,10 +739,7 @@ body {
 
 .toggle-slider {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: var(--bg-input);
   border-radius: 28px;
   transition: 0.3s;
@@ -753,10 +749,8 @@ body {
 .toggle-slider:before {
   content: "";
   position: absolute;
-  width: 22px;
-  height: 22px;
-  left: 2px;
-  bottom: 2px;
+  width: 22px; height: 22px;
+  left: 2px; bottom: 2px;
   background: var(--text-secondary);
   border-radius: 50%;
   transition: 0.3s;
@@ -772,15 +766,30 @@ body {
   background: #fff;
 }
 
-/* Prompt section - full width */
-.prompt-section {
-  margin-bottom: 24px;
-  padding: 20px;
+/* 2-column grid */
+.ai-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.ai-card {
   background: var(--bg-panel);
   border-radius: 12px;
   border: 1px solid var(--border);
+  padding: 20px;
 }
 
+.ai-card h3 {
+  font-size: 1rem;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Prompt */
 .prompt-section label {
   display: block;
   font-weight: 500;
@@ -789,7 +798,7 @@ body {
 
 .prompt-section textarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 180px;
   padding: 12px 14px;
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -799,6 +808,7 @@ body {
   font-family: inherit;
   resize: vertical;
   line-height: 1.5;
+  margin-bottom: 12px;
 }
 
 .prompt-section textarea:focus {
@@ -806,16 +816,12 @@ body {
   border-color: var(--accent);
 }
 
-/* Knowledge form - grid layout */
+/* Knowledge form */
 .knowledge-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: var(--bg-panel);
-  border-radius: 12px;
-  border: 1px solid var(--border);
+  margin-bottom: 16px;
 }
 
 .knowledge-form textarea {
@@ -841,7 +847,7 @@ body {
 
 /* Knowledge items */
 .knowledge-item, .notification-item, .rule-item {
-  background: var(--bg-panel);
+  background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
@@ -850,12 +856,6 @@ body {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
-}
-
-.knowledge-item .knowledge-badges {
-  display: flex;
-  gap: 6px;
-  width: 100%;
 }
 
 .knowledge-badge {
@@ -899,6 +899,20 @@ body {
 .btn-delete:hover {
   background: var(--error);
   color: #fff;
+}
+
+/* Bottom grid: notifications + rules */
+.ai-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Responsive: stack on mobile */
+@media (max-width: 900px) {
+  .ai-grid, .ai-bottom-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ─── Toast ─────────────────────────────────────────── */

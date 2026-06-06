@@ -98,57 +98,70 @@
             </div>
 
             <div class="tab-content" id="tab-ai" style="display:none">
-                <div class="admin-section">
-                    <h2>🤖 AI Agent</h2>
-                    
-                    <!-- Toggle -->
-                    <div class="toggle-row">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="aiEnabled">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="toggle-label">Agente IA</span>
-                        <span id="aiStatus">Desligado</span>
+                <div class="ai-layout">
+                    <!-- Header -->
+                    <div class="ai-header">
+                        <h2>🤖 AI Agent</h2>
+                        <div class="ai-header-controls">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="aiEnabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">Agente IA</span>
+                            <span id="aiStatus" class="ai-status-badge">Desligado</span>
+                        </div>
                     </div>
 
-                    <!-- System Prompt -->
-                    <div class="prompt-section">
-                        <label for="aiSystemPrompt">System Prompt</label>
-                        <textarea id="aiSystemPrompt" rows="8" placeholder="Prompt do agente..."></textarea>
-                        <button class="btn-save" id="saveAiPrompt" style="margin-top: 12px;">Salvar Prompt</button>
+                    <!-- Main Grid: 2 columns -->
+                    <div class="ai-grid">
+                        <!-- Left: Settings -->
+                        <div class="ai-card">
+                            <h3>⚙️ Configurações</h3>
+                            <div class="prompt-section">
+                                <label for="aiSystemPrompt">System Prompt</label>
+                                <textarea id="aiSystemPrompt" rows="10" placeholder="Prompt do agente..."></textarea>
+                                <button class="btn-save" id="saveAiPrompt">Salvar Prompt</button>
+                            </div>
+                        </div>
+
+                        <!-- Right: Knowledge -->
+                        <div class="ai-card">
+                            <h3>📚 Base de Conhecimento</h3>
+                            <div class="knowledge-form">
+                                <select id="knowledgeCategory">
+                                    <option value="produto">Produto</option>
+                                    <option value="beneficios">Benefícios</option>
+                                    <option value="preco">Preço</option>
+                                    <option value="exercicios">Exercícios</option>
+                                    <option value="comunidade">Comunidade</option>
+                                    <option value="faq">FAQ</option>
+                                    <option value="geral">Geral</option>
+                                </select>
+                                <select id="knowledgePhase">
+                                    <option value="general">Geral</option>
+                                    <option value="attention">Atenção (A)</option>
+                                    <option value="interest">Interesse (I)</option>
+                                    <option value="desire">Desejo (D)</option>
+                                    <option value="action">Ação (A)</option>
+                                </select>
+                                <textarea id="knowledgeContent" rows="4" placeholder="Conteúdo do conhecimento..."></textarea>
+                                <button class="btn-save" id="addKnowledge">Adicionar</button>
+                            </div>
+                            <div id="knowledgeList"></div>
+                        </div>
                     </div>
 
-                    <!-- Knowledge Base -->
-                    <h3>📚 Base de Conhecimento</h3>
-                    <div class="knowledge-form">
-                        <select id="knowledgeCategory">
-                            <option value="produto">Produto</option>
-                            <option value="beneficios">Benefícios</option>
-                            <option value="preco">Preço</option>
-                            <option value="exercicios">Exercícios</option>
-                            <option value="comunidade">Comunidade</option>
-                            <option value="faq">FAQ</option>
-                            <option value="geral">Geral</option>
-                        </select>
-                        <select id="knowledgePhase">
-                            <option value="general">Geral</option>
-                            <option value="attention">Atenção (A)</option>
-                            <option value="interest">Interesse (I)</option>
-                            <option value="desire">Desejo (D)</option>
-                            <option value="action">Ação (A)</option>
-                        </select>
-                        <textarea id="knowledgeContent" rows="4" placeholder="Conteúdo do conhecimento..."></textarea>
-                        <button class="btn-save" id="addKnowledge">Adicionar</button>
+                    <!-- Bottom: Notifications + Rules -->
+                    <div class="ai-bottom-grid">
+                        <div class="ai-card">
+                            <h3>🔔 Notificações</h3>
+                            <div id="aiNotifications"></div>
+                        </div>
+                        <div class="ai-card">
+                            <h3>📋 Regras de Fluxo AIDA</h3>
+                            <div id="aiRules"></div>
+                        </div>
                     </div>
-                    <div id="knowledgeList"></div>
-
-                    <!-- Notifications -->
-                    <h3>🔔 Notificações</h3>
-                    <div id="aiNotifications"></div>
-
-                    <!-- Flow Rules -->
-                    <h3>📋 Regras de Fluxo AIDA</h3>
-                    <div id="aiRules"></div>
                 </div>
             </div>
         </main>
