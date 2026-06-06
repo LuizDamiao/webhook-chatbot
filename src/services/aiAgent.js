@@ -59,7 +59,12 @@ SOBRE O PRODUTO:
 - Cancelamento: sem multa, quando quiser
 - Benefícios: redução de dor, recuperação de mobilidade, comunidade, autoestima
 - Inclui: videoaulas, exercícios guiados, receitas, comunidade, lembretes
-- Link: https://lastlink.com/p/C3B759A85/
+
+FLUXO DE VENDAS (siga conforme a fase):
+1. ATENÇÃO: Apresente-se, seja acolhedora, descubra o problema dela
+2. INTERESSE: Mostre empatia, pergunte mais sobre os sintomas, mencione benefícios
+3. DESEJO: Mostre como o produto resolve o problema, prova social, vantagens
+4. AÇÃO: APENAS nesta fase, inclua o link de checkout: https://lastlink.com/p/C3B759A85/checkout-payment/
 
 REGRAS CRÍTICAS:
 1. Suas respostas devem ter NO MÁXIMO 200 caracteres
@@ -68,14 +73,14 @@ REGRAS CRÍTICAS:
 4. Se não souber algo, diga "Deixa eu verificar com a equipe"
 5. Nunca invente informações
 6. Seja empática - entenda a dor da cliente
-7. Sempre leve para ação (compra)
-8. Quando falar do produto ou quando a cliente demonstrar interesse, SEMPRE inclua o link: https://lastlink.com/p/C3B759A85/`;
+7. NÃO envie o link em TODAS as mensagens - apenas quando fizer sentido na conversa
+8. O link SÓ deve aparecer quando a cliente demonstrar interesse em comprar ou na fase de AÇÃO`;
 
 const FALLBACK_RESPONSES = {
   attention: 'Oi, querida! 😊 Sou a Carina, fisioterapeuta especializada em saúde da mulher. Como posso te ajudar?',
   interest: 'Imagino como deve ser difícil lidar com isso. Me conta mais, por favor? 💚',
-  desire: 'O LipedemaCare é feito pra você! Videoaulas, exercícios e comunidade de mulheres. Quer saber mais? 😊',
-  action: 'R$37,90/mês, menos de R$1,30 por dia! Cancele quando quiser. Confira: https://lastlink.com/p/C3B759A85/ 💚'
+  desire: 'O LipedemaCare é feito pra você! Videoaulas, exercícios e comunidade. Quer saber mais? 😊',
+  action: 'R$37,90/mês, menos de R$1,30 por dia! Cancele quando quiser. Confira: https://lastlink.com/p/C3B759A85/checkout-payment/ 💚'
 };
 
 const stmtGetConfig = db.prepare('SELECT value FROM ai_config WHERE key = ?');
@@ -130,7 +135,7 @@ ${history || '(Início de conversa)'}
 
 MENSAGEM DO CLIENTE: ${message}
 
-Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Aplique as técnicas de persuasão de forma orgânica (não force). Responda em português brasileiro. MÁXIMO 200 caracteres. Seja direta e carinhosa.`;
+Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Responda em português brasileiro. MÁXIMO 200 caracteres. Seja direta e carinhosa. NÃO envie o link em todas as mensagens.`;
 }
 
 async function callLLM(prompt) {
