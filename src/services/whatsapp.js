@@ -226,7 +226,9 @@ export class WhatsAppService {
       const result = await processMessage(phone, message);
 
       if (result && result.response) {
-        await this.sock.sendMessage(`${phone}@s.whatsapp.net`, { text: result.response });
+        // Build correct JID based on phone format
+        const jid = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+        await this.sock.sendMessage(jid, { text: result.response });
         console.log(`[AI] Sent response to ${phone} (phase: ${result.phase}, confidence: ${result.confidence})`);
 
         if (result.needsHuman) {
