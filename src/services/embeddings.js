@@ -1,6 +1,6 @@
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
 const RETRY_DELAY_MS = 1000;
-const EMBEDDING_DIMENSIONS = 768;
+const EMBEDDING_DIMENSIONS = 3072;
 const BYTES_PER_FLOAT = 4;
 const FETCH_TIMEOUT_MS = 30000;
 const RATE_LIMIT_STATUS = 429;
@@ -28,7 +28,6 @@ async function fetchEmbedding(text, apiKey) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'models/text-embedding-004',
           content: { parts: [{ text }] }
         }),
         signal: controller.signal
