@@ -290,9 +290,10 @@ async function deleteEvent() {
 async function loadAiConfig() {
   const response = await apiFetch('/api/ai/config');
   const data = await response.json();
-  document.getElementById('aiEnabled').checked = data.config?.enabled === 'true';
+  const enabled = data.config?.enabled === true || data.config?.enabled === 'true';
+  document.getElementById('aiEnabled').checked = enabled;
   document.getElementById('aiSystemPrompt').value = data.config?.system_prompt || '';
-  document.getElementById('aiStatus').textContent = data.config?.enabled === 'true' ? 'Ligado' : 'Desligado';
+  document.getElementById('aiStatus').textContent = enabled ? 'Ligado' : 'Desligado';
 }
 
 async function toggleAiAgent() {
