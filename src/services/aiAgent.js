@@ -67,8 +67,8 @@ FLUXO DE VENDAS (siga conforme a fase):
 4. AÇÃO: APENAS nesta fase, inclua o link de checkout: https://lastlink.com/p/C3B759A85/checkout-payment/
 
 REGRAS CRÍTICAS:
-1. Suas respostas devem ter NO MÁXIMO 200 caracteres
-2. Seja direta e objetiva - nada de textão
+1. Suas respostas devem ter entre 2 a 4 frases
+2. Seja direta e objetiva
 3. Use linguagem feminina e acolhedora
 4. Se não souber algo, diga "Deixa eu verificar com a equipe"
 5. Nunca invente informações
@@ -135,7 +135,7 @@ ${history || '(Início de conversa)'}
 
 MENSAGEM DO CLIENTE: ${message}
 
-Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Responda em português brasileiro. MÁXIMO 200 caracteres. Seja direta e carinhosa. NÃO envie o link em todas as mensagens.`;
+Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Responda em português brasileiro. Seja direta e carinhosa. NÃO envie o link em todas as mensagens.`;
 }
 
 async function callLLM(prompt) {
@@ -301,9 +301,6 @@ export async function processMessage(phone, message) {
     let geminiResponse;
     try {
       geminiResponse = await callLLM(prompt);
-      if (geminiResponse.length > 200) {
-        geminiResponse = geminiResponse.substring(0, 197) + '...';
-      }
     } catch (err) {
       console.error(`[AI] Groq failed for ${phone}: ${err.message}`);
       geminiResponse = getFallbackResponse(newPhase);
