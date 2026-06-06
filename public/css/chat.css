@@ -677,10 +677,12 @@ body {
 /* ─── AI Agent Tab ──────────────────────────────────── */
 .tab-content { display: contents; }
 .tab-content[style*="display:none"] { display: none !important; }
+#tab-ai { grid-column: 1 / -1; display: block !important; }
+#tab-ai[style*="display:none"] { display: none !important; }
 
 .admin-section {
   padding: 24px;
-  max-width: 900px;
+  max-width: 100%;
 }
 
 .admin-section h2 {
