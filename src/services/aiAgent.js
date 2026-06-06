@@ -247,9 +247,24 @@ export async function processMessage(phone, message) {
       state = { phone, phase: 'attention', persuasionUsed: [], messageCount: 0 };
     }
 
+    const PURCHASE_INTENT_KEYWORDS = [
+  'quero', 'quero muito', 'quero agora', 'agora', 'sim', 'comprar',
+  'compro', 'como acesso', 'como compro', 'link', 'mandar link',
+  'mandar o link', 'me manda', 'envia', 'link do', 'checkout'
+];
+
+function hasPurchaseIntent(message) {
+  const lower = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return PURCHASE_INTENT_KEYWORDS.some(k => lower.includes(k));
+}
+
     let newPhase = state.phase;
     try {
-      newPhase = flowEngine.identifyPhase(message, state);
+      if (hasPurchaseIntent(message)) {
+        newPhase = 'action';
+      } else {
+        newPhase = flowEngine.identifyPhase(message, state);
+      }
       if (newPhase !== state.phase) {
         flowEngine.advancePhase(phone, newPhase);
         state = flowEngine.getConversationState(phone);
