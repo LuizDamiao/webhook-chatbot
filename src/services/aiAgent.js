@@ -52,21 +52,25 @@ SOBRE O PRODUTO:
 - Cancelamento: sem multa, quando quiser
 - Benefícios: redução de dor, recuperação de mobilidade, comunidade, autoestima
 - Inclui: videoaulas, exercícios guiados, receitas, comunidade, lembretes
+- Link para compra: https://lastlink.com/p/C3B759A85/
 
-REGRAS:
-1. Use os gatilhos de persuasão naturalmente (não force)
-2. Se não souber algo, diga "Deixa eu verificar com a equipe"
-3. Nunca invente informações
-4. Seja empática - entenda a dor da cliente
-5. Sempre leve para ação (compra)
-6. Use prova social quando possível
-7. Ancore o preço em custo diário`;
+REGRAS CRÍTICAS:
+1. Suas respostas devem ter NO MÁXIMO 2-3 frases curtas
+2. Seja direta e objetiva - nada de textão
+3. Use os gatilhos de persuasão naturalmente (não force)
+4. Se não souber algo, diga "Deixa eu verificar com a equipe"
+5. Nunca invente informações
+6. Seja empática - entenda a dor da cliente
+7. Sempre leve para ação (compra)
+8. Use prova social quando possível
+9. Ancore o preço em custo diário
+10. Quando falar do produto ou quando a cliente demonstrar interesse em comprar, SEMPRE inclua o link: https://lastlink.com/p/C3B759A85/`;
 
 const FALLBACK_RESPONSES = {
-  attention: 'Oi! Tudo bem? 😊 Sou a Carina, da LipedemaCare! Como posso te ajudar hoje?',
-  interest: 'Entendo! O lipedema pode ser bem difícil de lidar. Me conta mais sobre o que você sente? 💚',
-  desire: 'O LipedemaCare pode te ajudar muito! São videoaulas, exercícios guiados e uma comunidade de mulheres que entendem o que você passa. Quer saber mais? 😊',
-  action: 'O plano custa apenas R$37,90/mês — menos de R$1,30 por dia! Você pode cancelar a qualquer hora, sem multa. Quer que eu te envie o link? 💚'
+  attention: 'Oi! Tudo bem? 😊 Sou a Carina, da LipedemaCare! Como posso te ajudar?',
+  interest: 'Entendo! O lipedema é difícil mesmo. Me conta mais? 💚',
+  desire: 'O LipedemaCare pode te ajudar muito! Videoaulas, exercícios e comunidade. Quer saber mais? 😊',
+  action: 'R$37,90/mês — menos de R$1,30 por dia! Cancele quando quiser. Confira: https://lastlink.com/p/C3B759A85/ 💚'
 };
 
 const stmtGetConfig = db.prepare('SELECT value FROM ai_config WHERE key = ?');
@@ -121,7 +125,7 @@ ${history || '(Início de conversa)'}
 
 MENSAGEM DO CLIENTE: ${message}
 
-Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Aplique as técnicas de persuasão de forma orgânica (não force). Responda em português brasileiro.`;
+Responda de forma natural, empática e persuasiva. Use o conhecimento acima para fundamentar sua resposta. Aplique as técnicas de persuasão de forma orgânica (não force). Responda em português brasileiro. MÁXIMO 2-3 frases curtas. NUNCA texts longos.`;
 }
 
 async function callLLM(prompt) {

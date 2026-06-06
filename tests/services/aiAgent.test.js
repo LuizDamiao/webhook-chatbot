@@ -123,7 +123,7 @@ describe('AiAgent', () => {
       delete process.env.GROQ_API_KEY;
       const result = await processMessage('5511999999999', 'Olá');
       expect(result).not.toBeNull();
-      expect(result.response).toBe('Oi! Tudo bem? 😊 Sou a Carina, da LipedemaCare! Como posso te ajudar hoje?');
+      expect(result.response).toBe('Oi! Tudo bem? 😊 Sou a Carina, da LipedemaCare! Como posso te ajudar?');
       expect(result.phase).toBe('attention');
       expect(result.needsHuman).toBe(false);
     });
